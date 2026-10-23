@@ -1,0 +1,27 @@
+.activity-stats {
+    display: flex;
+    gap: 2rem;
+    margin: 0.25rem 0 0.75rem;
+}
+
+.activity-stat-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.activity-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.activity-stat-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.activity-stat-delta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}

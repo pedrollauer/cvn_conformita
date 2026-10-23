@@ -1,0 +1,17 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+// Dev-only proxy so the frontend can call /api/... without CORS, against
+// the Node backend (see ../app.ts) running on PORT (default 3000).
+// The backend itself mounts its routes under /api, so no path rewrite is needed.
+export default defineConfig({
+    plugins: [react()],
+    server: {
+        proxy: {
+            "/api": {
+                target: "http://localhost:3000",
+                changeOrigin: true,
+            },
+        },
+    },
+});

@@ -1,0 +1,32 @@
+# Single .gitignore covering all three sub-projects in this repo:
+#   /          - Node/TypeScript backend
+#   frontend/  - Vite/React frontend (also has its own frontend/.gitignore)
+#   service/   - ASP.NET Core PDM/SOLIDWORKS automation service
+
+# Dependencies - regenerated with `npm install` in / and in frontend/
+node_modules/
+
+# Build output / IDE caches - regenerated with `npm run build:all` (/, frontend/)
+# and `dotnet build` (service/). Matches at any depth, so this also covers
+# frontend/dist/ and service/bin/, service/obj/ without separate entries.
+dist/
+bin/
+obj/
+.vs/
+*.tsbuildinfo
+
+# Local SQLite databases - large, derived data regenerated from data_raw/ via the
+# import scripts and scripts/syncProjects.ts, plus the manual backups made along the way.
+*.db
+*.db.bak-*
+
+# --- Intentionally NOT ignored (do not add rules for these) ---
+# credentials/        - test DB logins (credentials/creds, credentials/erp_creds) this
+#                        project needs on every environment it runs on, including the
+#                        test server this repo is being moved to. These are test
+#                        credentials, not production secrets - see CLAUDE.md.
+# service/lib/*.dll    - vendored SOLIDWORKS/EPDM COM interop assemblies. Not available
+#                        via NuGet; service/bin and service/obj above only ignore the
+#                        *build output* copies of these, never the lib/ originals.
+!credentials/
+!service/lib/

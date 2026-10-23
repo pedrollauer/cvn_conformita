@@ -1,0 +1,155 @@
+.add-queue-pane {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.add-queue-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.add-queue-header h2 {
+    font-size: 1rem;
+}
+
+.add-queue-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.add-queue-tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.add-queue-tabs button {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--page-plane);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.add-queue-tabs button.active {
+    background: var(--series-1);
+    border-color: var(--series-1);
+    color: #ffffff;
+}
+
+.add-queue-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.add-queue-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    flex: 1;
+    min-width: 8rem;
+}
+
+.add-queue-form input {
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.add-queue-form button[type="submit"] {
+    padding: 0.45rem 0.9rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--series-1);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.add-queue-form button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.add-queue-status {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.add-queue-running {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.add-queue-spinner {
+    width: 0.8rem;
+    height: 0.8rem;
+    border: 2px solid var(--border);
+    border-top-color: var(--series-1);
+    border-radius: 50%;
+    animation: add-queue-spin 0.8s linear infinite;
+}
+
+@keyframes add-queue-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.add-queue-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 9rem;
+    overflow-y: auto;
+}
+
+.add-queue-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    border-bottom: 1px solid var(--gridline);
+    padding-bottom: 0.3rem;
+}
+
+.add-queue-list-code {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.add-queue-list-path {
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.add-queue-empty {
+    color: var(--text-muted);
+    font-style: italic;
+}

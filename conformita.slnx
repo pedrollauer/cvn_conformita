@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="conformita.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>

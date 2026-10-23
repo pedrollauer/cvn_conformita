@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="sqlite-net-pcl" Version="1.11.285" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="EPDM.Interop.epdm">
+      <HintPath>lib\EPDM.Interop.epdm.dll</HintPath>
+    </Reference>
+    <Reference Include="SolidWorks.Interop.sldworks">
+      <HintPath>lib\SolidWorks.Interop.sldworks.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="SolidWorks.Interop.swcommands">
+      <HintPath>lib\SolidWorks.Interop.swcommands.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="SolidWorks.Interop.swconst">
+      <HintPath>lib\SolidWorks.Interop.swconst.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+  </ItemGroup>
+
+</Project>

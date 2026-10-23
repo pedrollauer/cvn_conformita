@@ -1,0 +1,8 @@
+weekend.startDay = 6
+weekend.startHour = 0
+weekend.endDay = 0
+weekend.endHour = 23
+week.startHour = 10
+week.endHour = 6
+idleServer.activated = false
+idleServer.maxPack = 20

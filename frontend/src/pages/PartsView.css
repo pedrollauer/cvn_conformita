@@ -1,0 +1,58 @@
+.parts-view {
+    min-height: 100vh;
+}
+
+.parts-view-body {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.parts-view-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+}
+
+.parts-view-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 1.25rem;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1.25rem;
+}
+
+.parts-view-filters .hv-slider {
+    flex: 1;
+    min-width: 16rem;
+}
+
+.parts-view-filters-loading {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.parts-view-error {
+    margin: 0;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--series-2);
+    border-radius: 6px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 860px) {
+    .parts-view-body {
+        grid-template-columns: 1fr;
+    }
+}

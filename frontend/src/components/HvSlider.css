@@ -1,0 +1,58 @@
+.hv-slider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.hv-slider-bound {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.hv-slider-root {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    height: 1.25rem;
+    touch-action: none;
+    user-select: none;
+}
+
+.hv-slider-track {
+    position: relative;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+}
+
+.hv-slider-range {
+    position: absolute;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--series-1);
+}
+
+.hv-slider-thumb {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--series-1);
+    cursor: pointer;
+}
+
+.hv-slider-thumb:focus-visible {
+    outline: 2px solid var(--series-1);
+    outline-offset: 2px;
+}
+
+.hv-slider-value {
+    min-width: 10ch;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}

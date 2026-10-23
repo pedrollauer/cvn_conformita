@@ -1,0 +1,82 @@
+.chart-pane {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+}
+
+.chart-pane-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.chart-pane-header h2 {
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.chart-pane-caption {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.chart-pane-body-split {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.chart-pane-pie {
+    flex: 1;
+    min-width: 0;
+}
+
+.chart-pane-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0;
+    min-width: 8rem;
+}
+
+.chart-pane-stats > div {
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-pane-stats dt {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.chart-pane-stats dd {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.chart-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.chart-tooltip-value {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.chart-tooltip-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}

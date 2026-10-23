@@ -1,0 +1,31 @@
+{
+  "name": "conformita",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc --build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:all": "npm run build:frontend && npm run build",
+    "clean": "tsc --build --clean",
+    "start": "npm run build:all && node app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "compression": "^1.8.2",
+    "express": "^5.3.0",
+    "mssql": "^12.7.10"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/express": "^5.0.6",
+    "@types/mssql": "^12.3.0",
+    "@types/node": "^26.6.5",
+    "eslint": "^10.13.0",
+    "typescript": "^7.0.2"
+  }
+}

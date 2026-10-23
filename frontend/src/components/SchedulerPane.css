@@ -1,0 +1,64 @@
+.scheduler-pane {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.scheduler-pane h2 {
+    font-size: 1rem;
+}
+
+.scheduler-pane section h3 {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+}
+
+.scheduler-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.scheduler-row select,
+.scheduler-hour-input {
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.scheduler-hour-input {
+    width: 4.5rem;
+}
+
+.scheduler-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.scheduler-row button {
+    padding: 0.35rem 0.75rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--series-1);
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.scheduler-status {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
