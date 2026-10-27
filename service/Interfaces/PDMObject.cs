@@ -21,8 +21,14 @@ namespace Interface
         public PDMObject(string path, PDM pdm)
         {
             this.file = pdm.vault.GetFileFromPath(path, out this.folder);
+        }
+
+        public void getCopy()
+        {
+
             file.GetFileCopy(0, null, null, 0, "");
         }
+
         public PDMObject(int dir, IEdmFile5 file, IEdmVault5 vault, string path = "null")
         {
             this.parentFolderId = dir;
