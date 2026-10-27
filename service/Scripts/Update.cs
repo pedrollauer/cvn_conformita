@@ -56,7 +56,7 @@ public class Update
                     int currentState = update.review + update.checkout + update.update + update.checkin;
 
 
-                    while(currentState < 4 || attempt > max_retries )
+                    while(currentState < 4 || attempt > 3*max_retries )
                     {
                         switch (currentState)
                         {
@@ -105,12 +105,14 @@ public class Update
                                 update.update = 1;
                                 sql.conn.Update(update);
                                 currentState++;
+                                Console.WriteLine("Reconstructed.");
                             }
 
                             break;
                         case 3:
-                        if (update.checkout == 1 && update.checkin == 0 && obj.file.IsLocked)
+                        if (update.checkout == 1 && update.checkin!=1 && obj.file.IsLocked)
                         {
+                            Console.WriteLine("STEP 3");
                             bool chin = pdm.checkinFile(obj);
                             Console.WriteLine("chin "+chin);
                             if (chin)
