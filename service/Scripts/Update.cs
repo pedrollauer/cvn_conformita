@@ -96,6 +96,8 @@ public class Update
                             }
                             break;
                         case 2:
+
+                            obj = new PDMObject(path, pdm);
                             bool result = sw.Conform(update.path);
 
                             if (result)
@@ -110,11 +112,20 @@ public class Update
                         if (update.checkout == 1 && update.checkin == 0 && obj.file.IsLocked)
                         {
                             bool chin = pdm.checkinFile(obj);
+                            Console.WriteLine("chin "+chin);
                             if (chin)
                             {
                                 update.checkin = 1;
                                 sql.conn.Update(update);
                                 currentState++;
+                            }
+                            if(!chin)
+                            {
+                                Console.WriteLine("Unable to checkin. Falling back.");
+                                update.checkin = 0;
+                                update.update = 0;
+                                currentState=2;
+                                                                                                                                        
                             }
                         }
                             break;

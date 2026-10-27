@@ -738,22 +738,23 @@ namespace Interface
         {
             try
             {
+                Console.WriteLine("Checking in...");
 
                 if (obj.file != null)
                 {
+                        Console.WriteLine("File not null");
                     if (obj.file.IsLocked)
                     {
+                        Console.WriteLine("File is locked");
                         obj.file.UnlockFile(0, comment);
                         if (!obj.file.IsLocked)
                         {
+                            Console.WriteLine("File state changed");
                             sql.conn.Insert(new DB.update_log{code = obj.file.Name, status="CHECKIN", timestamp=DateTimeOffset.UtcNow.ToUnixTimeSeconds()});
                             Console.WriteLine($"File {obj.file.Name} checked in successfully.");
+                              return true;
                         }
-                        return true;
 
-                    }
-                    {
-                        return true;
                     }
                 }
             }
