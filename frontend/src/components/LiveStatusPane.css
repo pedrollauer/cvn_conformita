@@ -36,6 +36,25 @@
     letter-spacing: normal;
 }
 
+.live-status-countdown {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    padding: 0 0.1rem;
+}
+
+.live-status-countdown-value {
+    font-variant-numeric: tabular-nums;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.live-status-countdown-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
 .live-status-badge {
     display: flex;
     align-items: center;

@@ -6,6 +6,7 @@ import "./LiveStatusPane.css";
 const STATUS_POLL_MS = 3000; // cheap, in-memory only - safe to poll often
 const TASKS_POLL_MS = 10000; // hits the PDM SQL server - polled less often
 const CLOCK_TICK_MS = 1000; // just re-renders the "Xs ago" labels
+const COUNTDOWN_TICK_MS = 10000; // the "next run in" countdown only needs to move every 10s
 
 function formatElapsed(sinceMs: number, nowMs: number): string {
     const seconds = Math.max(0, Math.floor((nowMs - sinceMs) / 1000));
@@ -16,11 +17,28 @@ function formatElapsed(sinceMs: number, nowMs: number): string {
     return `${hours}h ${minutes % 60}m`;
 }
 
+/** Always hours:minutes:seconds, zero-padded, clock-style - e.g. "01:23:45". */
+function formatCountdown(remainingMs: number): string {
+    const totalSeconds = Math.max(0, Math.round(remainingMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+const NEXT_RUN_LABEL: Record<SchedulerStatus["nextRun"]["source"], string> = {
+    now: "scheduled window is open",
+    window: "next scheduled window",
+    idleCheck: "next idle check",
+};
+
 export function LiveStatusPane() {
     const [status, setStatus] = useState<SchedulerStatus | null>(null);
     const [tasks, setTasks] = useState<RunningTask[] | null>(null);
     const [tasksError, setTasksError] = useState<string | null>(null);
     const [now, setNow] = useState(() => Date.now());
+    const [countdownNow, setCountdownNow] = useState(() => Date.now());
     const statusErrorLogged = useRef(false);
 
     useEffect(() => {
@@ -78,8 +96,14 @@ export function LiveStatusPane() {
         return () => clearInterval(id);
     }, []);
 
+    useEffect(() => {
+        const id = setInterval(() => setCountdownNow(Date.now()), COUNTDOWN_TICK_MS);
+        return () => clearInterval(id);
+    }, []);
+
     const running = status?.running ?? false;
     const currentFile = status?.currentFile ?? null;
+    const nextRun = status?.nextRun ?? null;
 
     return (
         <div className="live-status-pane">
@@ -98,6 +122,21 @@ export function LiveStatusPane() {
                     <span>Idle</span>
                 )}
             </div>
+
+            {!running && nextRun && (
+                <div className="live-status-countdown">
+                    {nextRun.source === "now" ? (
+                        <span>Scheduled window is open - starting shortly</span>
+                    ) : (
+                        <>
+                            <span className="live-status-countdown-value">
+                                {formatCountdown(nextRun.atMs - countdownNow)}
+                            </span>
+                            <span className="live-status-countdown-label">until {NEXT_RUN_LABEL[nextRun.source]}</span>
+                        </>
+                    )}
+                </div>
+            )}
 
             <h3>
                 PDM tasks

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getNextRunEstimate = getNextRunEstimate;
 exports.startHourlyScheduler = startHourlyScheduler;
 const schedulerConfig_1 = require("./schedulerConfig");
 const jobScheduler_1 = require("./jobScheduler");
@@ -48,6 +49,30 @@ function minutesUntilReady(now, config) {
         }
     }
     return MAX_LOOKAHEAD_MINUTES;
+}
+/**
+ * Best estimate of when the scheduler will next actually attempt a run, for the dashboard's
+ * countdown - see frontend/src/components/LiveStatusPane.tsx. If already inside a scheduled
+ * window it's "now" (the next TICK_INTERVAL_MS tick will trigger it, same as tick() above). If
+ * idle-server is off, it's just the next window open (minutesUntilReady). If idle-server is on,
+ * it's whichever is sooner: the next window, or the next idle-PDM check (lastIdleCheckAt +
+ * intervalMinutes) - the idle check only *maybe* runs something (only if PDM turns out idle at
+ * that moment), but it's the earliest point something could happen.
+ */
+function getNextRunEstimate() {
+    const config = (0, schedulerConfig_1.getSchedulerConfig)();
+    const now = new Date();
+    const nowMs = now.getTime();
+    if (isReadyToWork(now, config)) {
+        return { atMs: nowMs, source: "now" };
+    }
+    const windowAtMs = nowMs + minutesUntilReady(now, config) * 60 * 1000;
+    if (!config.idleServer.activated) {
+        return { atMs: windowAtMs, source: "window" };
+    }
+    const idleIntervalMs = config.idleServer.intervalMinutes * 60 * 1000;
+    const idleAtMs = Math.max(nowMs, lastIdleCheckAt + idleIntervalMs);
+    return idleAtMs <= windowAtMs ? { atMs: idleAtMs, source: "idleCheck" } : { atMs: windowAtMs, source: "window" };
 }
 async function isPdmIdle() {
     const pdmSql = new pdm_sql_1.PdmSql();

@@ -41,10 +41,11 @@ api.post("/scheduler/run/:id", (req, res) => {
     });
     res.status(202).json({ message: `Script ${id} started` });
 });
-// Live "is script1 running, and on what file right now" status for the dashboard's update
-// indicator - cheap, in-memory only (see runState.ts), safe to poll often.
+// Live "is script1 running, on what file right now, and when's the next run" status for the
+// dashboard - cheap, in-memory/config-file only (see runState.ts, hourlyScheduler.ts), safe to
+// poll often.
 api.get("/scheduler/status", (_req, res) => {
-    res.json({ running: (0, jobScheduler_1.isRunning)(SCRIPT_ID), currentFile: (0, runState_1.getCurrentFile)() });
+    res.json({ running: (0, jobScheduler_1.isRunning)(SCRIPT_ID), currentFile: (0, runState_1.getCurrentFile)(), nextRun: (0, hourlyScheduler_1.getNextRunEstimate)() });
 });
 api.get("/scheduler/config", (_req, res) => {
     res.json((0, schedulerConfig_1.getSchedulerConfig)());

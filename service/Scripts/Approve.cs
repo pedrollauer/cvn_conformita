@@ -18,6 +18,12 @@ namespace Scripts
 
         public bool ApproveBatch(List<DB.update_flow> data )
         {
+            if (data.Count == 0)
+                return true;
+
+            if (done > data.Count)
+                return true;
+
             IEdmVault7 vault = (IEdmVault7)this.pdm.vault;
             IEdmBatchChangeState4 batchChanger = (IEdmBatchChangeState4)vault.CreateUtility(EdmUtility.EdmUtil_BatchChangeState);
 
@@ -76,9 +82,12 @@ namespace Scripts
 
             int attempt = 0;
 
-            while(done < howMany || attempt < retry)
+            List<DB.update_flow> files = sql.conn.Table<DB.update_flow>().Where(d => d.checkin == 1 && d.approve != 1).Take(howMany).ToList();
+            if (files.Count == 0)
+                return;
+
+            while(done < howMany || attempt < retry || done < files.Count)
             {
-                List<DB.update_flow> files = sql.conn.Table<DB.update_flow>().Where(d => d.checkin == 1 && d.approve != 1).Take(howMany).ToList();
                 this.ApproveBatch(files);
                 attempt++;
             }

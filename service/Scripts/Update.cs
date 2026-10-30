@@ -8,6 +8,7 @@ public class Update
         private const int max_attempts = 3;
         public Update(SW sw, PDM pdm, SQL sql, string path, bool updateDrawings = false)
         {
+            Console.WriteLine("=============== UPDATE ===============");
             // INITIALIZATION
             string file = Path.GetFileName(path);
             PDMObject obj = new PDMObject(path, pdm);

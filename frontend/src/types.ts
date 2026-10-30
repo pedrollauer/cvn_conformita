@@ -96,10 +96,19 @@ export interface CurrentFile {
     startedAt: number; // ms epoch
 }
 
+// Mirrors backend/hourlyScheduler.ts's NextRunEstimate.
+export type NextRunSource = "window" | "idleCheck" | "now";
+
+export interface NextRunEstimate {
+    atMs: number;
+    source: NextRunSource;
+}
+
 // GET /api/scheduler/status.
 export interface SchedulerStatus {
     running: boolean;
     currentFile: CurrentFile | null;
+    nextRun: NextRunEstimate;
 }
 
 // Mirrors backend/interface/pdm_sql.ts's RunningTask - a PDM Operations tab task that's queued

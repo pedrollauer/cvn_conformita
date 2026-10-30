@@ -95,9 +95,13 @@ finally
 /// Drains up to <paramref name="maxPack"/> jobs from the `queue` table, running
 /// <see cref="Scripts.Update"/> on each path exactly as the old /update handler did (one at a
 /// time, SW/PDM kept warm across the whole call), removing jobs that succeeded and leaving
-/// failures queued for retry. If the queue is empty, falls back to `update_flow` rows the service
-/// already started but hasn't approved yet - same fallback scripts/script1.ts used to do on the
-/// Node side. Does NOT approve anything - that's the separate "approve" command.
+/// failures queued for retry. Every run - not just when the queue happens to be empty - also
+/// picks up to <paramref name="maxPack"/> `update_flow` rows that are started but not yet
+/// approved (the old script1.ts fallback, which only ran when the queue was empty - that gap
+/// let files stuck mid-update, e.g. with checkout=1 but update/checkin still 0, sit untouched
+/// indefinitely whenever anything else was queued). `Scripts.Update` resumes a row from wherever
+/// its state machine left off, so re-running it on an already-stuck or already-finished file is
+/// safe either way. Does NOT approve anything - that's the separate "approve" command.
 /// </summary>
 static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int maxPack)
 {
@@ -113,19 +117,20 @@ static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int
         }
     }
 
-    if (jobs.Count == 0)
-    {
-        List<DB.update_flow> pending = sql.conn.Table<DB.update_flow>()
-            .Where(d => d.approve != 1)
-            .OrderBy(d => d.date)
-            .Take(maxPack)
-            .ToList();
-        Console.WriteLine($"[update] queue empty - {pending.Count} not-yet-approved file(s) to follow up on");
+    // Excludes paths already handled above via `queue` so a file isn't processed twice in the
+    // same run just because it happened to be both queued and already sitting in update_flow.
+    List<DB.update_flow> pending = sql.conn.Table<DB.update_flow>()
+        .Where(d => d.approve != 1)
+        .OrderBy(d => d.date)
+        .Take(maxPack)
+        .ToList()
+        .Where(d => !jobs.Any(j => j.path == d.path))
+        .ToList();
+    Console.WriteLine($"[update] {pending.Count} not-yet-approved file(s) to follow up on (started but not finished, or finished but not yet approved)");
 
-        foreach (DB.update_flow file in pending)
-        {
-            ProcessFile(sw, pdm, sql, file.path);
-        }
+    foreach (DB.update_flow file in pending)
+    {
+        ProcessFile(sw, pdm, sql, file.path);
     }
 
     Console.WriteLine("[update] done");
