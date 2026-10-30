@@ -60,6 +60,7 @@ function runCli(command: CliCommand, maxPack: number): Promise<number> {
             }
 
             if (parsed.status === "start") {
+                console.log(`script1: [${command}] [${parsed.code}] start`);
                 setCurrentFile({ code: parsed.code, path: parsed.path });
             } else {
                 console.log(`script1: [${command}] [${parsed.code}] ${parsed.status}`);

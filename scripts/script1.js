@@ -51,6 +51,7 @@ function runCli(command, maxPack) {
                 return;
             }
             if (parsed.status === "start") {
+                console.log(`script1: [${command}] [${parsed.code}] start`);
                 (0, runState_1.setCurrentFile)({ code: parsed.code, path: parsed.path });
             }
             else {
