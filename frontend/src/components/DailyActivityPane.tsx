@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getDailyActivity } from "../api";
 import type { DailyCount } from "../types";
 import "./ChartPane.css";
@@ -10,6 +10,15 @@ const WINDOW_DAYS = 30;
 function formatDay(dateKey: string): string {
     const [, month, day] = dateKey.split("-");
     return `${Number(month)}/${Number(day)}`;
+}
+
+/** `date` is a local YYYY-MM-DD key (see interface/activity.ts) - parsed as y/m/d components
+ * rather than handed to `new Date(string)`, which reads bare date strings as UTC and can shift
+ * the weekday by a day depending on the viewer's timezone offset. */
+function isWeekend(dateKey: string): boolean {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    const dow = new Date(year, month - 1, day).getDay();
+    return dow === 0 || dow === 6;
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: DailyCount }> }) {
@@ -86,6 +95,17 @@ export function DailyActivityPane() {
                 !loadError && <span className="parts-view-filters-loading">Loading activity...</span>
             )}
 
+            <div className="chart-legend">
+                <span className="chart-legend-item">
+                    <span className="chart-legend-swatch" style={{ background: "var(--series-1)" }} />
+                    Weekday
+                </span>
+                <span className="chart-legend-item">
+                    <span className="chart-legend-swatch" style={{ background: "var(--series-4)" }} />
+                    Weekend
+                </span>
+            </div>
+
             <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={daily ?? []} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="var(--gridline)" />
@@ -105,7 +125,14 @@ export function DailyActivityPane() {
                         width={32}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--gridline)" }} />
-                    <Bar dataKey="count" fill="var(--series-1)" radius={[4, 4, 0, 0]} maxBarSize={16} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={16}>
+                        {(daily ?? []).map((entry) => (
+                            <Cell
+                                key={entry.date}
+                                fill={isWeekend(entry.date) ? "var(--series-4)" : "var(--series-1)"}
+                            />
+                        ))}
+                    </Bar>
                 </BarChart>
             </ResponsiveContainer>
         </div>

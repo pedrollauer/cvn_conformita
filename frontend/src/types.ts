@@ -36,10 +36,19 @@ export interface PartsStatusSummary {
     todo: number;
 }
 
+// Parts that pass the occurrence filter but have no project inside the selected HV range -
+// previously silently excluded from the pie chart; surfaced separately so that data isn't lost.
+export interface OutsideRangeSummary {
+    done: number;
+    todo: number;
+    total: number;
+}
+
 export interface ErrorCount {
     code: number;
     label: string;
     count: number;
+    weight: number | null;
 }
 
 export interface OccurrenceRange {
@@ -71,6 +80,7 @@ export interface PartRecord {
 export interface ErrorLabel {
     code: number;
     label: string;
+    weight: number | null;
 }
 
 export interface PartsDataset {

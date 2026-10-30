@@ -43,6 +43,12 @@ class ActivitySql {
         }
         return result;
     }
+    /** Raw row count of the `done` table - every approval event, including re-approvals of the
+     * same code and any malformed rows. This is the dashboard's headline "Done" total, which is
+     * intentionally a flat DB count rather than a distinct-part count from the todo/done dataset. */
+    getTotalCount() {
+        return this.db.prepare("SELECT COUNT(*) AS count FROM done").get().count;
+    }
     close() {
         this.db.close();
     }

@@ -1,9 +1,11 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import type { PartsStatusSummary } from "../types";
+import type { OutsideRangeSummary, PartsStatusSummary } from "../types";
 import "./ChartPane.css";
 
 interface PieChartPaneProps {
     status: PartsStatusSummary;
+    outsideRange?: OutsideRangeSummary;
+    noProjectLink?: OutsideRangeSummary;
 }
 
 const SLICE_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)"];
@@ -24,7 +26,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
     );
 }
 
-export function PieChartPane({ status }: PieChartPaneProps) {
+export function PieChartPane({ status, outsideRange, noProjectLink }: PieChartPaneProps) {
     const data = [
         { name: "Done", value: status.done },
         { name: "In queue", value: status.inQueue },
@@ -77,6 +79,28 @@ export function PieChartPane({ status }: PieChartPaneProps) {
                         <dt>Todo</dt>
                         <dd>{status.todo.toLocaleString()}</dd>
                     </div>
+                    {outsideRange && (
+                        <div>
+                            <dt>Outside HV range</dt>
+                            <dd>{outsideRange.total.toLocaleString()}</dd>
+                            {outsideRange.total > 0 && (
+                                <span className="chart-pane-stats-note">
+                                    {outsideRange.done.toLocaleString()} done, {outsideRange.todo.toLocaleString()} todo
+                                </span>
+                            )}
+                        </div>
+                    )}
+                    {noProjectLink && (
+                        <div>
+                            <dt>No HV project link</dt>
+                            <dd>{noProjectLink.total.toLocaleString()}</dd>
+                            {noProjectLink.total > 0 && (
+                                <span className="chart-pane-stats-note">
+                                    {noProjectLink.done.toLocaleString()} done, {noProjectLink.todo.toLocaleString()} todo
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </dl>
             </div>
         </div>

@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { ThemeToggle } from "./ThemeToggle";
 import "./PageHeader.css";
 
 // Add a { to, label } entry here as each new page/route gets built.
@@ -15,13 +16,16 @@ export function PageHeader({ title }: PageHeaderProps) {
                 <img src="/logo.png" alt="Cavanna" className="page-logo" />
                 <h1>{title}</h1>
             </div>
-            <nav className="page-nav">
-                {NAV_LINKS.map((link) => (
-                    <NavLink key={link.to} to={link.to} end>
-                        {link.label}
-                    </NavLink>
-                ))}
-            </nav>
+            <div className="page-header-right">
+                <nav className="page-nav">
+                    {NAV_LINKS.map((link) => (
+                        <NavLink key={link.to} to={link.to} end>
+                            {link.label}
+                        </NavLink>
+                    ))}
+                </nav>
+                <ThemeToggle />
+            </div>
         </header>
     );
 }

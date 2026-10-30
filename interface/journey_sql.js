@@ -17,11 +17,11 @@ class JourneySql {
     /**
      * Everything the frontend needs to compute the pie/bar charts for *any* HV range and
      * occurrence filter without going back to the server - see frontend/src/pages/PartsView.tsx.
-     * Scoped to codes that actually have a code_project link (an unmatched code could never pass
-     * the old range filter either, so it's dropped here the same way). Written as EXISTS
-     * subqueries rather than JOINs for the same reason as the old per-range queries this replaced:
-     * it keeps SQLite driving the scan from the small todo/done tables instead of the 1M+ row
-     * code_project table.
+     * Every todo/done code is included, even ones with no code_project link at all - those just
+     * come back with an empty `projects` array (previously they were dropped here entirely, which
+     * silently hid most of todo/done from the dashboard rather than just from the HV-range filter).
+     * `projectRows` is still scoped with EXISTS rather than a JOIN so SQLite drives the scan from
+     * the small todo/done tables instead of the 1M+ row code_project table.
      */
     getFullDataset() {
         const projectRows = this.db
@@ -30,17 +30,11 @@ class JourneySql {
                  WHERE EXISTS (SELECT 1 FROM todo t WHERE t.code = cp.code)
                     OR EXISTS (SELECT 1 FROM done d WHERE d.code = cp.code)`)
             .all();
-        const todoRows = this.db
-            .prepare(`SELECT t.code AS code, t.error AS error
-                 FROM todo t
-                 WHERE EXISTS (SELECT 1 FROM code_project cp WHERE cp.code = t.code)`)
+        const todoRows = this.db.prepare(`SELECT code, error FROM todo`).all();
+        const doneRows = this.db.prepare(`SELECT DISTINCT code FROM done`).all();
+        const errorLabelRows = this.db
+            .prepare("SELECT code, description, weight FROM Errors")
             .all();
-        const doneRows = this.db
-            .prepare(`SELECT DISTINCT d.code AS code
-                 FROM done d
-                 WHERE EXISTS (SELECT 1 FROM code_project cp WHERE cp.code = d.code)`)
-            .all();
-        const errorLabelRows = this.db.prepare("SELECT code, description FROM Errors").all();
         const byCode = new Map();
         const record = (code) => {
             let rec = byCode.get(code);
@@ -68,6 +62,7 @@ class JourneySql {
             errorLabels: errorLabelRows.map((row) => ({
                 code: row.code,
                 label: row.description ?? `Error ${row.code}`,
+                weight: row.weight,
             })),
         };
     }

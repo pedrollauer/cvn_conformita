@@ -182,6 +182,17 @@ api.get("/activity/daily", (req, res) => {
     }
 });
 
+// Raw total of the `done` table - the dashboard's headline "Done" count, deliberately a flat DB
+// row count rather than the distinct-part count the todo/done dataset below would give.
+api.get("/activity/done-total", (_req, res) => {
+    const activity = new ActivitySql();
+    try {
+        res.json({ count: activity.getTotalCount() });
+    } finally {
+        activity.close();
+    }
+});
+
 app.use("/api", api);
 
 if (fs.existsSync(FRONTEND_DIST)) {

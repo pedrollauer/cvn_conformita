@@ -25,6 +25,12 @@
     color: var(--text-primary);
 }
 
+.page-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
 .page-nav {
     display: flex;
     gap: 1rem;

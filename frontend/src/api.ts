@@ -70,3 +70,8 @@ export function getPartsDataset(): Promise<PartsDataset> {
 export function getDailyActivity(days?: number): Promise<DailyCount[]> {
     return request<DailyCount[]>(`/activity/daily${days ? `?days=${days}` : ""}`);
 }
+
+/** Raw row count of the `done` table - the dashboard's headline "Done" total. */
+export function getDoneTotal(): Promise<{ count: number }> {
+    return request<{ count: number }>("/activity/done-total");
+}

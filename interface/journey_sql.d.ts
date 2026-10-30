@@ -15,6 +15,8 @@ export interface PartRecord {
 export interface ErrorLabel {
     code: number;
     label: string;
+    /** Severity weight from the Errors catalog - null when the error hasn't been rated yet. */
+    weight: number | null;
 }
 export interface PartsDataset {
     parts: PartRecord[];
@@ -32,11 +34,11 @@ export declare class JourneySql {
     /**
      * Everything the frontend needs to compute the pie/bar charts for *any* HV range and
      * occurrence filter without going back to the server - see frontend/src/pages/PartsView.tsx.
-     * Scoped to codes that actually have a code_project link (an unmatched code could never pass
-     * the old range filter either, so it's dropped here the same way). Written as EXISTS
-     * subqueries rather than JOINs for the same reason as the old per-range queries this replaced:
-     * it keeps SQLite driving the scan from the small todo/done tables instead of the 1M+ row
-     * code_project table.
+     * Every todo/done code is included, even ones with no code_project link at all - those just
+     * come back with an empty `projects` array (previously they were dropped here entirely, which
+     * silently hid most of todo/done from the dashboard rather than just from the HV-range filter).
+     * `projectRows` is still scoped with EXISTS rather than a JOIN so SQLite drives the scan from
+     * the small todo/done tables instead of the 1M+ row code_project table.
      */
     getFullDataset(): PartsDataset;
     /**

@@ -16,6 +16,10 @@ export declare class ActivitySql {
      * rather than compressing the timeline.
      */
     getDailyCounts(days: number): DailyCount[];
+    /** Raw row count of the `done` table - every approval event, including re-approvals of the
+     * same code and any malformed rows. This is the dashboard's headline "Done" total, which is
+     * intentionally a flat DB count rather than a distinct-part count from the todo/done dataset. */
+    getTotalCount(): number;
     close(): void;
 }
 //# sourceMappingURL=activity.d.ts.map

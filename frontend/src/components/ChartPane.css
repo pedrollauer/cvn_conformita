@@ -1,8 +1,9 @@
 .chart-pane {
     background: var(--surface-1);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-card);
 }
 
 .chart-pane-header {
@@ -57,6 +58,33 @@
     font-weight: 600;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
+}
+
+.chart-pane-stats-note {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    margin: 0.1rem 0 0.6rem;
+}
+
+.chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.chart-legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
 }
 
 .chart-tooltip {

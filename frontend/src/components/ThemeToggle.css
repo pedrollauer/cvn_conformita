@@ -1,0 +1,22 @@
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--page-plane);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.theme-toggle:hover {
+    background: var(--gridline);
+    color: var(--text-primary);
+}
+
+.theme-toggle:active {
+    transform: scale(0.92);
+}
