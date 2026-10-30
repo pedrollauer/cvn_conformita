@@ -10,13 +10,11 @@ const node_path_1 = __importDefault(require("node:path"));
 const node_readline_1 = __importDefault(require("node:readline"));
 const runState_1 = require("../runState");
 exports.MAX_PACK = 50;
-// The CLI replaces the old HTTP service (port 5000) - see service/Program.cs. One invocation is
-// one whole batch: it drains the queue itself, runs Scripts.Update per file (falling back to
-// not-yet-approved update_flow rows if the queue is empty, same as this file used to do), then
-// one Scripts.Approve pass, exactly mirroring what this file's old fetch-based loop did - just
-// now orchestrated in C# so SOLIDWORKS/PDM stay warm for the whole batch instead of restarting
-// per request. Defaults to the Debug build output; override for a Release build or a different
-// checkout layout.
+// The CLI replaces the old HTTP service (port 5000) - see service/Program.cs. It has two
+// independent commands, "update" and "approve", each its own process invocation (so each can be
+// run/tested on its own) - run() below calls them sequentially to match this file's old combined
+// update-then-approve behavior. Defaults to the Debug build output; override for a Release build
+// or a different checkout layout.
 const DEFAULT_CLI_PATH = node_path_1.default.join(__dirname, "..", "service", "bin", "Debug", "net10.0-windows", "PdmThumbnailService.exe");
 const CLI_PATH = process.env.PDM_CLI_PATH ?? DEFAULT_CLI_PATH;
 function isFileStatusLine(value) {
@@ -27,15 +25,17 @@ function isFileStatusLine(value) {
         value.status !== undefined);
 }
 /**
- * Spawns the CLI for one batch and waits for it to exit. stdout is newline-delimited - most
- * lines are plain log text (forwarded to console.log as-is), but per-file lines are JSON (see
- * service/Program.cs's ProcessFile): a "start" line before each file so setCurrentFile reflects
- * what's actually running right now (Conform() can take a while), and an "ok"/"error" result
- * line after. Resolves with the exit code; rejects only if the process itself fails to spawn.
+ * Spawns the CLI for one command ("update" or "approve") and waits for it to exit. stdout is
+ * newline-delimited - most lines are plain log text (forwarded to console.log as-is), but
+ * per-file lines are JSON (see service/Program.cs): "update" emits a "start" line before each
+ * file so setCurrentFile reflects what's actually running right now (Conform() can take a
+ * while), then an "ok"/"error" result line; "approve" only emits result lines (there's no
+ * meaningful "start" moment for an approval). Resolves with the exit code; rejects only if the
+ * process itself fails to spawn.
  */
-function runCli(maxPack) {
+function runCli(command, maxPack) {
     return new Promise((resolve, reject) => {
-        const child = (0, node_child_process_1.spawn)(CLI_PATH, [String(maxPack)], { stdio: ["ignore", "pipe", "pipe"] });
+        const child = (0, node_child_process_1.spawn)(CLI_PATH, [command, String(maxPack)], { stdio: ["ignore", "pipe", "pipe"] });
         const stdout = node_readline_1.default.createInterface({ input: child.stdout });
         stdout.on("line", (line) => {
             let parsed;
@@ -54,7 +54,7 @@ function runCli(maxPack) {
                 (0, runState_1.setCurrentFile)({ code: parsed.code, path: parsed.path });
             }
             else {
-                console.log(`script1: [${parsed.code}] ${parsed.status}`);
+                console.log(`script1: [${command}] [${parsed.code}] ${parsed.status}`);
                 (0, runState_1.setCurrentFile)(null);
             }
         });
@@ -71,17 +71,27 @@ function runCli(maxPack) {
     });
 }
 /**
- * Script 1: runs one batch via the CLI (see runCli above). Defaults to MAX_PACK, but callers
- * (e.g. the idle-server scheduler) can pass a smaller pack size. A non-zero exit means the CLI
- * hit a hard failure (SOLIDWORKS/PDM never initialized, or an unhandled exception) - individual
- * file failures within a batch don't fail the run, they're just reported per-file and left
- * queued for retry on the C# side.
+ * Script 1: runs "update" then "approve" via the CLI (see runCli above) - two separate process
+ * invocations, same net effect as this file's old combined fetch-based loop. Defaults to
+ * MAX_PACK, but callers (e.g. the idle-server scheduler) can pass a smaller pack size. A
+ * non-zero exit from either command means a hard failure (SOLIDWORKS/PDM never initialized, or
+ * an unhandled exception) - individual file failures don't fail the run, they're just reported
+ * per-file and left for retry on the C# side. If "update" hard-fails, "approve" still runs -
+ * there may be older files already sitting ready for approval independent of this update attempt.
  */
 async function run(maxPack = exports.MAX_PACK) {
-    console.log(`script1: starting batch (maxPack=${maxPack})`);
-    const exitCode = await runCli(maxPack);
-    if (exitCode !== 0) {
-        throw new Error(`PdmThumbnailService CLI exited with code ${exitCode}`);
+    console.log(`script1: starting update (maxPack=${maxPack})`);
+    const updateExit = await runCli("update", maxPack);
+    if (updateExit !== 0) {
+        console.error(`script1: update exited with code ${updateExit}`);
+    }
+    console.log(`script1: starting approve (maxPack=${maxPack})`);
+    const approveExit = await runCli("approve", maxPack);
+    if (approveExit !== 0) {
+        console.error(`script1: approve exited with code ${approveExit}`);
+    }
+    if (updateExit !== 0 || approveExit !== 0) {
+        throw new Error(`PdmThumbnailService CLI failed (update=${updateExit}, approve=${approveExit})`);
     }
     console.log("script1: done");
 }

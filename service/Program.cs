@@ -9,29 +9,46 @@ using System.Text.Json;
 [DllImport("gdi32.dll")]
 static extern bool DeleteObject(IntPtr hObject);
 
-// CLI ARGS: a single optional positional maxPack (defaults to 50, matching scripts/script1.ts's
-// MAX_PACK). One invocation = one batch (update loop, then one approve pass), replacing the old
-// /update + /approve HTTP endpoints - see service/CLAUDE.md and the "CLI instead of HTTP service"
-// migration plan for why this is a whole-batch-per-process design rather than one process per file.
-int maxPack = 50;
-if (args.Length > 0)
+// CLI: PdmThumbnailService.exe <update|approve> [maxPack]
+// Two independent commands (not one combined batch) so each can be tested/run on its own -
+// replacing the old /update + /approve HTTP endpoints (see service/CLAUDE.md). "update" needs
+// SOLIDWORKS; "approve" only touches the PDM vault via Scripts.Approve (SQL + PDM, no SW param),
+// so it skips starting SOLIDWORKS entirely - cheaper and faster for approve-only runs.
+if (args.Length < 1)
 {
-    if (!int.TryParse(args[0], out maxPack) || maxPack <= 0)
+    Console.Error.WriteLine("Usage: PdmThumbnailService.exe <update|approve> [maxPack]");
+    return 1;
+}
+
+string command = args[0].ToLowerInvariant();
+if (command != "update" && command != "approve")
+{
+    Console.Error.WriteLine($"Unknown command \"{command}\" (expected \"update\" or \"approve\")");
+    return 1;
+}
+
+int maxPack = 50;
+if (args.Length > 1)
+{
+    if (!int.TryParse(args[1], out maxPack) || maxPack <= 0)
     {
-        Console.Error.WriteLine($"Invalid maxPack argument: \"{args[0]}\" (expected a positive integer)");
+        Console.Error.WriteLine($"Invalid maxPack argument: \"{args[1]}\" (expected a positive integer)");
         return 1;
     }
 }
 
 // SOLIDWORKS / PDM INICIALIZATION
 Interface.PDM pdm;
-Interface.SW sw;
+Interface.SW? sw = null;
 Interface.SQL sql;
 try
 {
     sql = new Interface.SQL();
     pdm = new Interface.PDM(sql, true);
-    sw = new Interface.SW();
+    if (command == "update")
+    {
+        sw = new Interface.SW();
+    }
 }
 catch (Exception ex)
 {
@@ -41,12 +58,19 @@ catch (Exception ex)
 
 try
 {
-    RunBatch(sw, pdm, sql, maxPack);
+    if (command == "update")
+    {
+        RunUpdate(sw!, pdm, sql, maxPack);
+    }
+    else
+    {
+        RunApprove(sql, pdm, maxPack);
+    }
     return 0;
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"Batch failed: {ex}");
+    Console.Error.WriteLine($"{command} failed: {ex}");
     return 1;
 }
 finally
@@ -54,30 +78,31 @@ finally
     // Nothing used to quit SOLIDWORKS because the old web server just stayed up (and SW stayed
     // open) for its whole lifetime. Now every invocation is its own process, so it has to close
     // what it opened or SLDWORKS.exe piles up across runs.
-    try
+    if (sw != null)
     {
-        sw.swApp?.ExitApp();
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"Failed to close SOLIDWORKS cleanly: {ex.Message}");
+        try
+        {
+            sw.swApp?.ExitApp();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to close SOLIDWORKS cleanly: {ex.Message}");
+        }
     }
 }
 
 /// <summary>
 /// Drains up to <paramref name="maxPack"/> jobs from the `queue` table, running
 /// <see cref="Scripts.Update"/> on each path exactly as the old /update handler did (one at a
-/// time, SW/PDM kept warm across the whole batch), removing jobs that succeeded and leaving
+/// time, SW/PDM kept warm across the whole call), removing jobs that succeeded and leaving
 /// failures queued for retry. If the queue is empty, falls back to `update_flow` rows the service
 /// already started but hasn't approved yet - same fallback scripts/script1.ts used to do on the
-/// Node side. Finishes with one Scripts.Approve pass, identical to the old final /approve call.
-/// Emits one JSON line per file to stdout as it's processed so the caller can follow progress
-/// live instead of waiting for the whole batch.
+/// Node side. Does NOT approve anything - that's the separate "approve" command.
 /// </summary>
-static void RunBatch(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int maxPack)
+static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int maxPack)
 {
     List<QueueRow> jobs = sql.conn.Query<QueueRow>("SELECT id, code, path FROM queue ORDER BY id ASC LIMIT ?", maxPack);
-    Console.WriteLine($"[batch] picked up {jobs.Count} job(s) from queue (maxPack={maxPack})");
+    Console.WriteLine($"[update] picked up {jobs.Count} job(s) from queue (maxPack={maxPack})");
 
     foreach (QueueRow job in jobs)
     {
@@ -95,7 +120,7 @@ static void RunBatch(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int 
             .OrderBy(d => d.date)
             .Take(maxPack)
             .ToList();
-        Console.WriteLine($"[batch] queue empty - {pending.Count} not-yet-approved file(s) to follow up on");
+        Console.WriteLine($"[update] queue empty - {pending.Count} not-yet-approved file(s) to follow up on");
 
         foreach (DB.update_flow file in pending)
         {
@@ -103,8 +128,39 @@ static void RunBatch(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int 
         }
     }
 
+    Console.WriteLine("[update] done");
+}
+
+/// <summary>
+/// Runs Scripts.Approve on up to <paramref name="maxPack"/> files unchanged (identical to the old
+/// final /approve call) - a global sweep of every `update_flow` row with checkin == 1 and
+/// approve != 1, not scoped to any particular run of "update". Approve's constructor never
+/// returns a result either, so success per file is determined the same way as ProcessFile does
+/// for update: snapshot the candidate codes before calling it, then read `update_flow` back
+/// afterward to see which now have approve == 1.
+/// </summary>
+static void RunApprove(Interface.SQL sql, Interface.PDM pdm, int maxPack)
+{
+    List<DB.update_flow> candidates = sql.conn.Table<DB.update_flow>()
+        .Where(d => d.checkin == 1 && d.approve != 1)
+        .Take(maxPack)
+        .ToList();
+    Console.WriteLine($"[approve] {candidates.Count} candidate(s) pending approval (maxPack={maxPack})");
+
     _ = new Scripts.Approve(sql, pdm, maxPack);
-    Console.WriteLine("[batch] done");
+
+    foreach (DB.update_flow candidate in candidates)
+    {
+        DB.update_flow? after = sql.conn.Table<DB.update_flow>()
+            .Where(u => u.code == candidate.code && u.path == candidate.path)
+            .FirstOrDefault();
+        bool approved = after != null && after.approve == 1;
+
+        Console.WriteLine(JsonSerializer.Serialize(new { code = candidate.code, path = candidate.path, status = approved ? "ok" : "error" }));
+        Console.Out.Flush();
+    }
+
+    Console.WriteLine("[approve] done");
 }
 
 /// <summary>
