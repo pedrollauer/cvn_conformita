@@ -1,4 +1,14 @@
-import type { SchedulerConfig, QueueJob, ProjectRange, PartsDataset, DailyCount, SchedulerStatus, RunningTask } from "./types";
+import type {
+    SchedulerConfig,
+    QueueJob,
+    QueueSkipResult,
+    QueueFamilyResult,
+    ProjectRange,
+    PartsDataset,
+    DailyCount,
+    SchedulerStatus,
+    RunningTask,
+} from "./types";
 
 const API_BASE = "/api";
 
@@ -42,24 +52,28 @@ export function listQueue(): Promise<QueueJob[]> {
     return request<QueueJob[]>("/queue");
 }
 
-export function addToQueue(job: { code: string; path: string }): Promise<QueueJob> {
-    return request<QueueJob>("/queue", {
+/** Returns a QueueSkipResult instead of a QueueJob if the file's already fully processed and
+ * approved - queuing it again would be a no-op. */
+export function addToQueue(job: { code: string; path: string }): Promise<QueueJob | QueueSkipResult> {
+    return request<QueueJob | QueueSkipResult>("/queue", {
         method: "POST",
         body: JSON.stringify(job),
     });
 }
 
-/** Looks up `code` in the PDM vault and queues its resolved path - no path needed from the caller. */
-export function addToQueueByCode(code: string): Promise<QueueJob> {
-    return request<QueueJob>("/queue/from-code", {
+/** Looks up `code` in the PDM vault and queues its resolved path - no path needed from the
+ * caller. Same already-done skip as addToQueue. */
+export function addToQueueByCode(code: string): Promise<QueueJob | QueueSkipResult> {
+    return request<QueueJob | QueueSkipResult>("/queue/from-code", {
         method: "POST",
         body: JSON.stringify({ code }),
     });
 }
 
-/** Queues every approved file under \CAD\ whose filename matches `pattern` (glob, e.g. "22*"). */
-export function addFamilyToQueue(pattern: string): Promise<QueueJob[]> {
-    return request<QueueJob[]>("/queue/by-pattern", {
+/** Queues every approved file under \CAD\ whose filename matches `pattern` (glob, e.g. "22*") -
+ * minus any already fully processed and approved (reported in skippedCount). */
+export function addFamilyToQueue(pattern: string): Promise<QueueFamilyResult> {
+    return request<QueueFamilyResult>("/queue/by-pattern", {
         method: "POST",
         body: JSON.stringify({ pattern }),
     });

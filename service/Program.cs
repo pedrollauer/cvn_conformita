@@ -10,21 +10,66 @@ using System.Text.Json;
 static extern bool DeleteObject(IntPtr hObject);
 
 // CLI: PdmThumbnailService.exe <update|approve> [maxPack]
-// Two independent commands (not one combined batch) so each can be tested/run on its own -
-// replacing the old /update + /approve HTTP endpoints (see service/CLAUDE.md). "update" needs
-// SOLIDWORKS; "approve" only touches the PDM vault via Scripts.Approve (SQL + PDM, no SW param),
-// so it skips starting SOLIDWORKS entirely - cheaper and faster for approve-only runs.
+//      PdmThumbnailService.exe freezebar <path>
+// "update"/"approve" are independent commands (not one combined batch) so each can be
+// tested/run on its own - replacing the old /update + /approve HTTP endpoints (see
+// service/CLAUDE.md). "update" needs SOLIDWORKS; "approve" only touches the PDM vault via
+// Scripts.Approve (SQL + PDM, no SW param), so it skips starting SOLIDWORKS entirely - cheaper
+// and faster for approve-only runs. "freezebar" is a dry-run diagnostic for SW.MoveFreezeBar's
+// external-part detection - opens one file, lists its features, moves the freeze bar, reports
+// the result, and closes WITHOUT saving (never touches PDM/the queue/update_flow at all).
 if (args.Length < 1)
 {
-    Console.Error.WriteLine("Usage: PdmThumbnailService.exe <update|approve> [maxPack]");
+    Console.Error.WriteLine("Usage: PdmThumbnailService.exe <update|approve> [maxPack]  |  freezebar <path>");
     return 1;
 }
 
 string command = args[0].ToLowerInvariant();
-if (command != "update" && command != "approve")
+if (command != "update" && command != "approve" && command != "freezebar")
 {
-    Console.Error.WriteLine($"Unknown command \"{command}\" (expected \"update\" or \"approve\")");
+    Console.Error.WriteLine($"Unknown command \"{command}\" (expected \"update\", \"approve\", or \"freezebar\")");
     return 1;
+}
+
+if (command == "freezebar")
+{
+    if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1]))
+    {
+        Console.Error.WriteLine("Usage: PdmThumbnailService.exe freezebar <path>");
+        return 1;
+    }
+
+    Interface.SW testSw;
+    try
+    {
+        testSw = new Interface.SW();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"SOLIDWORKS initialization failed: {ex}");
+        return 1;
+    }
+
+    try
+    {
+        return RunFreezeBarTest(testSw) ? 0 : 1;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"freezebar test failed: {ex}");
+        return 1;
+    }
+    finally
+    {
+        try
+        {
+            testSw.swApp?.ExitApp();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to close SOLIDWORKS cleanly: {ex.Message}");
+        }
+    }
 }
 
 int maxPack = 50;
@@ -201,6 +246,25 @@ static bool ProcessFile(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, s
     Console.Out.Flush();
 
     return success;
+}
+
+/// <summary>
+/// "freezebar" command body: runs the real SW.Conform(path) pipeline (open, MoveFreezeBar,
+/// MoveRollbackBarToEnd, drafting standard, image quality, rebuild, SAVE, close) against a fixed
+/// test file - unlike the dry-run diagnostic this replaced, this genuinely saves the result, so
+/// point `path` at a scratch/test file, never a real PDM-tracked one. Lets MoveFreezeBar's
+/// MoveCopyBody-boundary logic be verified end to end the same way Scripts.Update actually
+/// invokes it (via Conform), not just in isolation.
+/// </summary>
+static bool RunFreezeBarTest(Interface.SW sw)
+{
+    string path = "C:\\Users\\pedro.lauer\\Desktop\\hole_removal\\teste.sldprt";
+    Console.WriteLine($"[freezebar] running Conform on {path}");
+
+    bool result = sw.Conform(path);
+    Console.WriteLine($"[freezebar] Conform returned {result}");
+
+    return result;
 }
 
 /// <summary>

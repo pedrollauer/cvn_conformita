@@ -31,6 +31,21 @@ export interface QueueJob {
     path: string;
 }
 
+// Returned instead of a QueueJob by the /api/queue add-flows when the file has already run all
+// the way through update+checkin and been approved - queuing it again would be a no-op.
+export interface QueueSkipResult {
+    skipped: true;
+    code: string;
+    path: string;
+    reason: string;
+}
+
+// POST /api/queue/by-pattern's response shape.
+export interface QueueFamilyResult {
+    queued: QueueJob[];
+    skippedCount: number;
+}
+
 export interface PartsStatusSummary {
     done: number;
     inQueue: number;

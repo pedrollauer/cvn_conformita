@@ -12,6 +12,7 @@ const schedulerConfig_1 = require("./schedulerConfig");
 const hourlyScheduler_1 = require("./hourlyScheduler");
 const runState_1 = require("./runState");
 const queue_1 = require("./interface/queue");
+const updateFlow_1 = require("./interface/updateFlow");
 const journey_sql_1 = require("./interface/journey_sql");
 const pdm_sql_1 = require("./interface/pdm_sql");
 const activity_1 = require("./interface/activity");
@@ -60,6 +61,31 @@ api.post("/scheduler/config", (req, res) => {
         res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }
 });
+// Skips re-queuing a file that's either already sitting in `queue` (a literal duplicate row) or
+// has already run all the way through update+checkin and been approved (queuing it again would
+// just be a no-op for Scripts.Update that burns a maxPack slot). Returns the reason to report
+// back, or null if it's fine to add.
+function queueSkipReason(code, path) {
+    const queue = new queue_1.QueueSql();
+    try {
+        if (queue.has(code, path)) {
+            return "Already in queue";
+        }
+    }
+    finally {
+        queue.close();
+    }
+    const updateFlow = new updateFlow_1.UpdateFlowSql();
+    try {
+        if (updateFlow.isFullyDone(code, path)) {
+            return "Already fully processed and approved";
+        }
+    }
+    finally {
+        updateFlow.close();
+    }
+    return null;
+}
 api.get("/queue", (_req, res) => {
     const queue = new queue_1.QueueSql();
     try {
@@ -75,9 +101,16 @@ api.post("/queue", (req, res) => {
         res.status(400).json({ error: "Both code and path are required strings" });
         return;
     }
+    const trimmedCode = code.trim();
+    const trimmedPath = path.trim();
+    const skipReason = queueSkipReason(trimmedCode, trimmedPath);
+    if (skipReason) {
+        res.status(200).json({ skipped: true, code: trimmedCode, path: trimmedPath, reason: skipReason });
+        return;
+    }
     const queue = new queue_1.QueueSql();
     try {
-        res.status(201).json(queue.add(code.trim(), path.trim()));
+        res.status(201).json(queue.add(trimmedCode, trimmedPath));
     }
     finally {
         queue.close();
@@ -107,6 +140,11 @@ api.post("/queue/from-code", async (req, res) => {
     }
     if (!file) {
         res.status(404).json({ error: `No file named "${trimmedCode}" found in the PDM vault` });
+        return;
+    }
+    const skipReason = queueSkipReason(trimmedCode, file.path);
+    if (skipReason) {
+        res.status(200).json({ skipped: true, code: trimmedCode, path: file.path, reason: skipReason });
         return;
     }
     const queue = new queue_1.QueueSql();
@@ -143,12 +181,20 @@ api.post("/queue/by-pattern", async (req, res) => {
         return;
     }
     const queue = new queue_1.QueueSql();
+    const updateFlow = new updateFlow_1.UpdateFlowSql();
     try {
-        const jobs = queue.addMany(files.map((file) => ({ code: file.filename, path: file.path })));
-        res.status(201).json(jobs);
+        // Queue membership is checked against one snapshot rather than once per file - "Add
+        // family" can match thousands of files, and a has() query per file would be thousands of
+        // round-trips for what's really one question ("which of these are already queued?").
+        const alreadyQueued = new Set(queue.all().map((job) => `${job.code}\u0000${job.path}`));
+        const eligible = files.filter((file) => !alreadyQueued.has(`${file.filename}\u0000${file.path}`) && !updateFlow.isFullyDone(file.filename, file.path));
+        const skippedCount = files.length - eligible.length;
+        const jobs = queue.addMany(eligible.map((file) => ({ code: file.filename, path: file.path })));
+        res.status(201).json({ queued: jobs, skippedCount });
     }
     finally {
         queue.close();
+        updateFlow.close();
     }
 });
 // Snapshot of the PDM Operations tab queue - tasks that are queued or actively running (EndTime

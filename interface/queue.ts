@@ -49,6 +49,13 @@ export class QueueSql {
         return rows.map((row) => ({ id: row.id, code: row.code, path: row.path }));
     }
 
+    /** True if `code`+`path` already has a row in the queue, regardless of how many. Used by the
+     * /api/queue add-flows to skip re-queuing something that's already waiting to be processed. */
+    has(code: string, path: string): boolean {
+        const row = this.db.prepare("SELECT 1 FROM queue WHERE code = ? AND path = ? LIMIT 1").get(code, path);
+        return row !== undefined;
+    }
+
     /** Adds a job to the back of the queue. */
     add(code: string, path: string): QueueJob {
         this.db.prepare("INSERT INTO queue (code, path) VALUES (?, ?)").run(code, path);

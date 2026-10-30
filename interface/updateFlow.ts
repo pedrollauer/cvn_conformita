@@ -12,6 +12,14 @@ interface UpdateFlowRow {
     path: string;
 }
 
+interface UpdateFlowStateRow {
+    review: number;
+    checkout: number;
+    update: number;
+    checkin: number;
+    approve: number;
+}
+
 /**
  * Read-only access to the `update_flow` table in the shared PDM service SQLite DB
  * (C:\db\conformita.db, see service/Interfaces/SQL.cs). Mirrors the `update_flow` model
@@ -40,6 +48,32 @@ export class UpdateFlowSql {
         } catch (err) {
             console.error("[UpdateFlowSql] failed to read update_flow (table may not exist yet):", err);
             return [];
+        }
+    }
+
+    /**
+     * True if `code`+`path` has already run all the way through the service's
+     * review -> checkout -> update -> checkin state machine AND been approved - i.e. queuing it
+     * again would be a pure no-op (Scripts.Update's currentState is already 4, so its while loop
+     * never executes any PDM/SOLIDWORKS step) with nothing left for Scripts.Approve to do either.
+     * Used by the /api/queue add-flows to skip re-queuing files that have nothing left to do.
+     */
+    isFullyDone(code: string, path: string): boolean {
+        try {
+            const row = this.db
+                .prepare(
+                    `SELECT review, checkout, "update", checkin, approve
+                     FROM update_flow
+                     WHERE code = ? AND path = ?`,
+                )
+                .get(code, path) as unknown as UpdateFlowStateRow | undefined;
+            if (!row) {
+                return false;
+            }
+            return row.review === 1 && row.checkout === 1 && row.update === 1 && row.checkin === 1 && row.approve === 1;
+        } catch (err) {
+            console.error("[UpdateFlowSql] failed to check update_flow status (table may not exist yet):", err);
+            return false;
         }
     }
 

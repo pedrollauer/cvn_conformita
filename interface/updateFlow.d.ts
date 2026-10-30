@@ -18,6 +18,14 @@ export declare class UpdateFlowSql {
      * fresh DB without it yet just means "nothing pending" rather than an error.
      */
     notYetApproved(limit: number): PendingUpdateFlow[];
+    /**
+     * True if `code`+`path` has already run all the way through the service's
+     * review -> checkout -> update -> checkin state machine AND been approved - i.e. queuing it
+     * again would be a pure no-op (Scripts.Update's currentState is already 4, so its while loop
+     * never executes any PDM/SOLIDWORKS step) with nothing left for Scripts.Approve to do either.
+     * Used by the /api/queue add-flows to skip re-queuing files that have nothing left to do.
+     */
+    isFullyDone(code: string, path: string): boolean;
     close(): void;
 }
 //# sourceMappingURL=updateFlow.d.ts.map

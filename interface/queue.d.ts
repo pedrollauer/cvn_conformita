@@ -15,6 +15,9 @@ export declare class QueueSql {
     take(limit: number): QueueJob[];
     /** Lists every job currently in the queue (oldest first). */
     all(): QueueJob[];
+    /** True if `code`+`path` already has a row in the queue, regardless of how many. Used by the
+     * /api/queue add-flows to skip re-queuing something that's already waiting to be processed. */
+    has(code: string, path: string): boolean;
     /** Adds a job to the back of the queue. */
     add(code: string, path: string): QueueJob;
     /**

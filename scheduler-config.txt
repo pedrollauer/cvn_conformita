@@ -4,6 +4,6 @@ weekend.endDay = 0
 weekend.endHour = 23
 week.startHour = 19
 week.endHour = 6
-idleServer.activated = true
+idleServer.activated = false
 idleServer.maxPack = 20
 idleServer.intervalMinutes = 20

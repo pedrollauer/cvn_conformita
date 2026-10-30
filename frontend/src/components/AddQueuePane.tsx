@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { addFamilyToQueue, addToQueue, addToQueueByCode, listQueue } from "../api";
-import type { QueueJob } from "../types";
+import type { QueueJob, QueueSkipResult } from "../types";
 import "./AddQueuePane.css";
+
+function isSkipResult(value: QueueJob | QueueSkipResult): value is QueueSkipResult {
+    return "skipped" in value;
+}
 
 type Mode = "search" | "family" | "spreadsheet";
 
@@ -69,9 +73,13 @@ export function AddQueuePane() {
         setBusy(true);
         setStatus(null);
         try {
-            const job = await addToQueueByCode(searchCode.trim());
+            const result = await addToQueueByCode(searchCode.trim());
             setSearchCode("");
-            setStatus(`Found in PDM and queued: ${job.path}`);
+            if (isSkipResult(result)) {
+                setStatus(`Not queued - ${result.reason.toLowerCase()}: ${result.code}`);
+            } else {
+                setStatus(`Found in PDM and queued: ${result.path}`);
+            }
             refresh();
         } catch (err) {
             setStatus(`Failed to add: ${err instanceof Error ? err.message : String(err)}`);
@@ -88,9 +96,10 @@ export function AddQueuePane() {
         setBusy(true);
         setStatus(null);
         try {
-            const jobs = await addFamilyToQueue(familyPattern.trim());
+            const result = await addFamilyToQueue(familyPattern.trim());
             setFamilyPattern("");
-            setStatus(`Queued ${jobs.length} approved CAD file(s) matching "${familyPattern.trim()}".`);
+            const skipNote = result.skippedCount > 0 ? `, ${result.skippedCount} already processed (skipped)` : "";
+            setStatus(`Queued ${result.queued.length} approved CAD file(s) matching "${familyPattern.trim()}"${skipNote}.`);
             refresh();
         } catch (err) {
             setStatus(`Failed to add: ${err instanceof Error ? err.message : String(err)}`);
@@ -114,17 +123,27 @@ export function AddQueuePane() {
         setBusy(true);
         setStatus(null);
         let ok = 0;
+        let skipped = 0;
         let failed = 0;
         for (const row of rows) {
             try {
-                await addToQueue(row);
-                ok++;
+                const result = await addToQueue(row);
+                if (isSkipResult(result)) {
+                    skipped++;
+                } else {
+                    ok++;
+                }
             } catch {
                 failed++;
             }
         }
         setBusy(false);
-        setStatus(`Added ${ok} job(s)${failed > 0 ? `, ${failed} failed` : ""}.`);
+        setStatus(
+            `Added ${ok} job(s)` +
+                (skipped > 0 ? `, ${skipped} already processed (skipped)` : "") +
+                (failed > 0 ? `, ${failed} failed` : "") +
+                ".",
+        );
         refresh();
     }
 

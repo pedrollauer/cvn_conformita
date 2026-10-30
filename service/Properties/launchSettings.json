@@ -8,6 +8,10 @@
     "approve": {
       "commandName": "Project",
       "commandLineArgs": "approve 50"
+    },
+    "freezebar": {
+      "commandName": "Project",
+      "commandLineArgs": "freezebar C:\\PATH\\TO\\TEST\\FILE.SLDPRT"
     }
   }
 }

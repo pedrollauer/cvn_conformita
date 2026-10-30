@@ -627,7 +627,50 @@ namespace Interface
                 return true;
             return false;
         }
-        public bool MoveFreezeBarToEnd()
+        // GetTypeName2() for a Move/Copy Body feature - confirmed 2026-10-30 against a real part
+        // (via the "freezebar" CLI test command) that brings in external geometry through
+        // Insert > Part and then repositions/copies it with a Move/Copy Body feature. The
+        // earlier guess ("DerivedPart"/"SheetMetal") was wrong - this one's from an actual
+        // feature list, not inferred from the interop DLL's interface names.
+        private const string MoveCopyBodyFeatureTypeName = "MoveCopyBody";
+
+        /// <summary>
+        /// Walks the feature tree from the first feature looking for a MoveCopyBody feature. If
+        /// found, returns the feature immediately BEFORE it - confirmed test case: "...-731620159209"
+        /// (Stock) immediately precedes "Corpo-Mover/Copiar2" (MoveCopyBody), and the freeze bar
+        /// needs to stop before the Stock feature, not before the MoveCopyBody itself. Returns
+        /// null if there's no MoveCopyBody feature, or if one exists but is the very first
+        /// feature in the tree (nothing to stop before).
+        /// </summary>
+        public Feature FindFreezeBarBoundaryFeature()
+        {
+            if (this.model == null)
+            {
+                return null;
+            }
+
+            Feature feat = (Feature)this.model.FirstFeature();
+            Feature previous = null;
+            while (feat != null)
+            {
+                if (feat.GetTypeName2() == MoveCopyBodyFeatureTypeName)
+                {
+                    return previous;
+                }
+                previous = feat;
+                feat = (Feature)feat.GetNextFeature();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Moves the freeze bar to the very end of the feature tree, UNLESS the tree contains a
+        /// Move/Copy Body feature - in that case the freeze bar stops just before whatever
+        /// feature precedes it instead, so the Move/Copy Body step (and the externally-inserted
+        /// geometry it acts on) never ends up frozen. Returns false if there's no active model or
+        /// the EditFreeze2 call fails.
+        /// </summary>
+        public bool MoveFreezeBar()
         {
             if (this.model == null)
             {
@@ -635,15 +678,93 @@ namespace Interface
             }
 
             FeatureManager swFeatMgr = this.model.FeatureManager;
+            Feature boundary = FindFreezeBarBoundaryFeature();
 
-            int status = swFeatMgr.EditFreeze2(
-                (int)swMoveFreezeBarTo_e.swMoveFreezeBarToEnd,
-                "",
-                true,
-                true
-            );
+            int status;
+            if (boundary != null)
+            {
+                Console.WriteLine($"MoveFreezeBar: MoveCopyBody feature found - stopping before \"{boundary.Name}\".");
+                status = swFeatMgr.EditFreeze2(
+                    (int)swMoveFreezeBarTo_e.swMoveFreezeBarToBeforeFeature,
+                    boundary.Name,
+                    true,
+                    true
+                );
+            }
+            else
+            {
+                status = swFeatMgr.EditFreeze2(
+                    (int)swMoveFreezeBarTo_e.swMoveFreezeBarToEnd,
+                    "",
+                    true,
+                    true
+                );
+            }
 
             return status == 0;
+        }
+
+        /// <summary>
+        /// Opens a part or assembly for inspection only - no drafting-standard/image-quality
+        /// changes, no save. Used by the "freezebar" CLI test command so a dry run can never
+        /// touch a real file's content.
+        /// </summary>
+        public bool OpenForInspection(string path)
+        {
+            int type = GetDocumentType(path);
+            if (type == -1)
+            {
+                Console.WriteLine($"OpenForInspection: unsupported file type for {path}");
+                return false;
+            }
+
+            int err = 0, warn = 0;
+            this.model = this.swApp.OpenDoc6(
+                path.Trim(),
+                type,
+                (int)(swOpenDocOptions_e.swOpenDocOptions_Silent | swOpenDocOptions_e.swOpenDocOptions_LoadModel),
+                "",
+                ref err,
+                ref warn
+            );
+            return this.model != null;
+        }
+
+        /// <summary>
+        /// Every top-level feature's name and GetTypeName2(), in tree order - diagnostic helper
+        /// for the "freezebar" CLI test command to verify MoveCopyBodyFeatureTypeName against a
+        /// real file before trusting MoveFreezeBar's detection on anything that matters.
+        /// </summary>
+        public List<(string Name, string TypeName)> ListFeatures()
+        {
+            List<(string, string)> result = new List<(string, string)>();
+            if (this.model == null)
+            {
+                return result;
+            }
+
+            Feature feat = (Feature)this.model.FirstFeature();
+            while (feat != null)
+            {
+                result.Add((feat.Name, feat.GetTypeName2()));
+                feat = (Feature)feat.GetNextFeature();
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Closes the currently open document without saving - used by the "freezebar" CLI test
+        /// command so a dry run can never persist anything to a real file.
+        /// </summary>
+        public void CloseWithoutSaving()
+        {
+            if (this.model == null)
+            {
+                return;
+            }
+            string title = this.model.GetTitle();
+            this.swApp.CloseDoc(title);
+            this.model = null;
         }
 
         public bool MoveRollbackBarToEnd()
@@ -826,7 +947,7 @@ namespace Interface
                     (int)(swOpenDocOptions_e.swOpenDocOptions_Silent | swOpenDocOptions_e.swOpenDocOptions_LoadModel),
                     "", ref err, ref warn);
 
-                this.MoveFreezeBarToEnd();
+                this.MoveFreezeBar();
                 this.MoveRollbackBarToEnd();
                 this.SetDraftingStandard();
                 this.SetImageQuality();

@@ -32,6 +32,30 @@ class UpdateFlowSql {
             return [];
         }
     }
+    /**
+     * True if `code`+`path` has already run all the way through the service's
+     * review -> checkout -> update -> checkin state machine AND been approved - i.e. queuing it
+     * again would be a pure no-op (Scripts.Update's currentState is already 4, so its while loop
+     * never executes any PDM/SOLIDWORKS step) with nothing left for Scripts.Approve to do either.
+     * Used by the /api/queue add-flows to skip re-queuing files that have nothing left to do.
+     */
+    isFullyDone(code, path) {
+        try {
+            const row = this.db
+                .prepare(`SELECT review, checkout, "update", checkin, approve
+                     FROM update_flow
+                     WHERE code = ? AND path = ?`)
+                .get(code, path);
+            if (!row) {
+                return false;
+            }
+            return row.review === 1 && row.checkout === 1 && row.update === 1 && row.checkin === 1 && row.approve === 1;
+        }
+        catch (err) {
+            console.error("[UpdateFlowSql] failed to check update_flow status (table may not exist yet):", err);
+            return false;
+        }
+    }
     close() {
         this.db.close();
     }
