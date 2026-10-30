@@ -16,6 +16,7 @@ export interface WeekConfig {
 export interface IdleServerConfig {
     activated: boolean;
     maxPack: number;
+    intervalMinutes: number;
 }
 
 export interface SchedulerConfig {
@@ -86,4 +87,31 @@ export interface ErrorLabel {
 export interface PartsDataset {
     parts: PartRecord[];
     errorLabels: ErrorLabel[];
+}
+
+// Mirrors backend/runState.ts's CurrentFile.
+export interface CurrentFile {
+    code: string;
+    path: string;
+    startedAt: number; // ms epoch
+}
+
+// GET /api/scheduler/status.
+export interface SchedulerStatus {
+    running: boolean;
+    currentFile: CurrentFile | null;
+}
+
+// Mirrors backend/interface/pdm_sql.ts's RunningTask - a PDM Operations tab task that's queued
+// or actively running (EndTime IS NULL).
+export interface RunningTask {
+    taskInstanceId: number;
+    taskId: number;
+    taskName: string;
+    taskStatus: number;
+    attempt: number;
+    startTime: string | null; // ISO timestamp, null if still queued (not yet picked up by a host)
+    docString: string | null;
+    host: string | null;
+    initiatedBy: string | null;
 }

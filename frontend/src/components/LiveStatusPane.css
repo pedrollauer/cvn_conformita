@@ -1,0 +1,152 @@
+.live-status-pane {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    box-shadow: var(--shadow-card);
+}
+
+.live-status-pane h2 {
+    font-size: 1rem;
+}
+
+.live-status-pane h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+}
+
+.live-status-count {
+    background: var(--gridline);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 0.05rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.live-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    background: var(--page-plane);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+}
+
+.live-status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--baseline);
+    flex-shrink: 0;
+}
+
+.live-status-dot-running {
+    background: var(--status-good);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-good) 60%, transparent);
+    animation: live-status-pulse 1.6s ease-out infinite;
+}
+
+@keyframes live-status-pulse {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-good) 55%, transparent);
+    }
+    70% {
+        box-shadow: 0 0 0 7px color-mix(in srgb, var(--status-good) 0%, transparent);
+    }
+    100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-good) 0%, transparent);
+    }
+}
+
+.live-status-code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 0.82rem;
+    background: var(--gridline);
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+}
+
+.live-status-elapsed {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.live-status-error {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--status-critical);
+}
+
+.live-status-tasks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+
+.live-status-muted {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.live-status-task {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    background: var(--page-plane);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.45rem 0.6rem;
+}
+
+.live-status-task-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+}
+
+.live-status-task-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.live-status-task-state {
+    font-size: 0.72rem;
+    color: var(--status-good);
+    white-space: nowrap;
+}
+
+.live-status-task-doc {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-status-task-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}

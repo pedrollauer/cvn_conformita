@@ -1,5 +1,6 @@
 import { QueueSql } from "../interface/queue";
 import { UpdateFlowSql } from "../interface/updateFlow";
+import { setCurrentFile } from "../runState";
 
 export const MAX_PACK = 50;
 const SERVICE_BASE_URL = process.env.PDM_SERVICE_URL ?? "http://localhost:5000";
@@ -57,6 +58,7 @@ export async function run(maxPack: number = MAX_PACK): Promise<void> {
 
         for (const job of jobs) {
             console.log(`script1: updating [${job.code}] ${job.path}`);
+            setCurrentFile({ code: job.code, path: job.path });
             const ok = await callUpdate(job.path);
             if (ok) {
                 queue.remove(job.id);
@@ -75,13 +77,16 @@ export async function run(maxPack: number = MAX_PACK): Promise<void> {
 
             for (const file of notYetApproved) {
                 console.log(`script1: updating [${file.code}] ${file.path}`);
+                setCurrentFile({ code: file.code, path: file.path });
                 await callUpdate(file.path);
             }
         }
 
+        setCurrentFile(null);
         await callApprove(maxPack);
         console.log("script1: done");
     } finally {
+        setCurrentFile(null);
         queue.close();
     }
 }

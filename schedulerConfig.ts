@@ -71,6 +71,8 @@ export interface WeekConfig {
 export interface IdleServerConfig {
     activated: boolean;
     maxPack: number;
+    /** Minutes to wait between idle-PDM checks - see hourlyScheduler.ts's IDLE_CHECK_INTERVAL_MS. */
+    intervalMinutes: number;
 }
 
 export interface SchedulerConfig {
@@ -80,11 +82,16 @@ export interface SchedulerConfig {
 }
 
 export const DEFAULT_IDLE_SERVER_MAX_PACK = 20;
+export const DEFAULT_IDLE_SERVER_INTERVAL_MINUTES = 5;
 
 const DEFAULT_CONFIG: SchedulerConfig = {
     weekend: { startDay: 6, startHour: 0, endDay: 0, endHour: 18 }, // Saturday 00:00 -> Sunday 18:00
     week: { startHour: 19, endHour: 6 }, // every night, 19:00 -> 06:00
-    idleServer: { activated: false, maxPack: DEFAULT_IDLE_SERVER_MAX_PACK },
+    idleServer: {
+        activated: false,
+        maxPack: DEFAULT_IDLE_SERVER_MAX_PACK,
+        intervalMinutes: DEFAULT_IDLE_SERVER_INTERVAL_MINUTES,
+    },
 };
 
 // Plain-text key=value file in the project root, so the schedule survives server restarts
@@ -102,6 +109,7 @@ const FIELD_PARSERS: Record<string, (value: string) => unknown> = {
     "week.endHour": (v) => parseHour(v, "week.endHour"),
     "idleServer.activated": (v) => parseBoolean(v, "idleServer.activated"),
     "idleServer.maxPack": (v) => parsePositiveInt(v, "idleServer.maxPack"),
+    "idleServer.intervalMinutes": (v) => parsePositiveInt(v, "idleServer.intervalMinutes"),
 };
 
 function serializeConfig(config: SchedulerConfig): string {
@@ -115,6 +123,7 @@ function serializeConfig(config: SchedulerConfig): string {
             `week.endHour = ${config.week.endHour}`,
             `idleServer.activated = ${config.idleServer.activated}`,
             `idleServer.maxPack = ${config.idleServer.maxPack}`,
+            `idleServer.intervalMinutes = ${config.idleServer.intervalMinutes}`,
         ].join("\n") + "\n"
     );
 }
@@ -189,6 +198,7 @@ function readConfigFile(): SchedulerConfig {
         idleServer: {
             activated: field("idleServer.activated", DEFAULT_CONFIG.idleServer.activated),
             maxPack: field("idleServer.maxPack", DEFAULT_CONFIG.idleServer.maxPack),
+            intervalMinutes: field("idleServer.intervalMinutes", DEFAULT_CONFIG.idleServer.intervalMinutes),
         },
     };
 }
@@ -200,7 +210,7 @@ export function getSchedulerConfig(): SchedulerConfig {
 export interface SchedulerConfigPatch {
     weekend?: Partial<Record<"startDay" | "startHour" | "endDay" | "endHour", unknown>>;
     week?: Partial<Record<"startHour" | "endHour", unknown>>;
-    idleServer?: Partial<Record<"activated" | "maxPack", unknown>>;
+    idleServer?: Partial<Record<"activated" | "maxPack" | "intervalMinutes", unknown>>;
 }
 
 /** Applies a partial update to whichever of the three config sections are present, validating each field, and persists the result to scheduler-config.txt. */
@@ -227,7 +237,7 @@ export function updateSchedulerConfig(patch: SchedulerConfigPatch): SchedulerCon
     }
 
     if (patch.idleServer) {
-        const { activated, maxPack } = patch.idleServer;
+        const { activated, maxPack, intervalMinutes } = patch.idleServer;
         if (activated !== undefined) {
             if (typeof activated !== "boolean") {
                 throw new Error(`Invalid idleServer.activated (expected boolean): ${JSON.stringify(activated)}`);
@@ -236,6 +246,9 @@ export function updateSchedulerConfig(patch: SchedulerConfigPatch): SchedulerCon
         }
         if (maxPack !== undefined) {
             next.idleServer.maxPack = parsePositiveInt(maxPack, "idleServer.maxPack");
+        }
+        if (intervalMinutes !== undefined) {
+            next.idleServer.intervalMinutes = parsePositiveInt(intervalMinutes, "idleServer.intervalMinutes");
         }
     }
 

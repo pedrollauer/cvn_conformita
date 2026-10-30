@@ -4,6 +4,7 @@ exports.MAX_PACK = void 0;
 exports.run = run;
 const queue_1 = require("../interface/queue");
 const updateFlow_1 = require("../interface/updateFlow");
+const runState_1 = require("../runState");
 exports.MAX_PACK = 50;
 const SERVICE_BASE_URL = process.env.PDM_SERVICE_URL ?? "http://localhost:5000";
 /**
@@ -58,6 +59,7 @@ async function run(maxPack = exports.MAX_PACK) {
         console.log(`script1: picked up ${jobs.length} job(s) (maxPack=${maxPack})`);
         for (const job of jobs) {
             console.log(`script1: updating [${job.code}] ${job.path}`);
+            (0, runState_1.setCurrentFile)({ code: job.code, path: job.path });
             const ok = await callUpdate(job.path);
             if (ok) {
                 queue.remove(job.id);
@@ -75,13 +77,16 @@ async function run(maxPack = exports.MAX_PACK) {
             console.log(`script1: queue empty - ${notYetApproved.length} not-yet-approved file(s) to follow up on`);
             for (const file of notYetApproved) {
                 console.log(`script1: updating [${file.code}] ${file.path}`);
+                (0, runState_1.setCurrentFile)({ code: file.code, path: file.path });
                 await callUpdate(file.path);
             }
         }
+        (0, runState_1.setCurrentFile)(null);
         await callApprove(maxPack);
         console.log("script1: done");
     }
     finally {
+        (0, runState_1.setCurrentFile)(null);
         queue.close();
     }
 }

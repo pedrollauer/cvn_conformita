@@ -5,10 +5,15 @@ import compression from "compression";
 import { isRunning, runScript } from "./jobScheduler";
 import { getSchedulerConfig, updateSchedulerConfig } from "./schedulerConfig";
 import { startHourlyScheduler } from "./hourlyScheduler";
+import { getCurrentFile } from "./runState";
 import { QueueSql } from "./interface/queue";
 import { JourneySql } from "./interface/journey_sql";
 import { PdmSql } from "./interface/pdm_sql";
 import { ActivitySql } from "./interface/activity";
+
+// The only script jobScheduler.ts currently has registered (see hourlyScheduler.ts's SCRIPT_ID) -
+// hardcoded here the same way, rather than generalizing a single-script status endpoint.
+const SCRIPT_ID = 1;
 
 const PORT = process.env.PORT ?? 3000;
 const FRONTEND_DIST = path.join(__dirname, "frontend/dist");
@@ -37,6 +42,12 @@ api.post("/scheduler/run/:id", (req, res) => {
     });
 
     res.status(202).json({ message: `Script ${id} started` });
+});
+
+// Live "is script1 running, and on what file right now" status for the dashboard's update
+// indicator - cheap, in-memory only (see runState.ts), safe to poll often.
+api.get("/scheduler/status", (_req, res) => {
+    res.json({ running: isRunning(SCRIPT_ID), currentFile: getCurrentFile() });
 });
 
 api.get("/scheduler/config", (_req, res) => {
@@ -144,6 +155,19 @@ api.post("/queue/by-pattern", async (req, res) => {
         res.status(201).json(jobs);
     } finally {
         queue.close();
+    }
+});
+
+// Snapshot of the PDM Operations tab queue - tasks that are queued or actively running (EndTime
+// IS NULL). Hits the PDM SQL server directly, so it's a real-time read, not cached.
+api.get("/pdm/running-tasks", async (_req, res) => {
+    const pdm = new PdmSql();
+    try {
+        res.json(await pdm.getRunningTasks());
+    } catch (err) {
+        res.status(502).json({ error: `PDM query failed: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+        await pdm.close();
     }
 });
 

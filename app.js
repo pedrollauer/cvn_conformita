@@ -10,10 +10,14 @@ const compression_1 = __importDefault(require("compression"));
 const jobScheduler_1 = require("./jobScheduler");
 const schedulerConfig_1 = require("./schedulerConfig");
 const hourlyScheduler_1 = require("./hourlyScheduler");
+const runState_1 = require("./runState");
 const queue_1 = require("./interface/queue");
 const journey_sql_1 = require("./interface/journey_sql");
 const pdm_sql_1 = require("./interface/pdm_sql");
 const activity_1 = require("./interface/activity");
+// The only script jobScheduler.ts currently has registered (see hourlyScheduler.ts's SCRIPT_ID) -
+// hardcoded here the same way, rather than generalizing a single-script status endpoint.
+const SCRIPT_ID = 1;
 const PORT = process.env.PORT ?? 3000;
 const FRONTEND_DIST = node_path_1.default.join(__dirname, "frontend/dist");
 const app = (0, express_1.default)();
@@ -36,6 +40,11 @@ api.post("/scheduler/run/:id", (req, res) => {
         console.error(`Script ${id} failed:`, err);
     });
     res.status(202).json({ message: `Script ${id} started` });
+});
+// Live "is script1 running, and on what file right now" status for the dashboard's update
+// indicator - cheap, in-memory only (see runState.ts), safe to poll often.
+api.get("/scheduler/status", (_req, res) => {
+    res.json({ running: (0, jobScheduler_1.isRunning)(SCRIPT_ID), currentFile: (0, runState_1.getCurrentFile)() });
 });
 api.get("/scheduler/config", (_req, res) => {
     res.json((0, schedulerConfig_1.getSchedulerConfig)());
@@ -139,6 +148,20 @@ api.post("/queue/by-pattern", async (req, res) => {
     }
     finally {
         queue.close();
+    }
+});
+// Snapshot of the PDM Operations tab queue - tasks that are queued or actively running (EndTime
+// IS NULL). Hits the PDM SQL server directly, so it's a real-time read, not cached.
+api.get("/pdm/running-tasks", async (_req, res) => {
+    const pdm = new pdm_sql_1.PdmSql();
+    try {
+        res.json(await pdm.getRunningTasks());
+    }
+    catch (err) {
+        res.status(502).json({ error: `PDM query failed: ${err instanceof Error ? err.message : String(err)}` });
+    }
+    finally {
+        await pdm.close();
     }
 });
 // The real span of known HV project numbers, so the frontend can size its slider correctly.

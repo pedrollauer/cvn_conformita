@@ -6,6 +6,7 @@ import { OccurrenceFilter } from "../components/OccurrenceFilter";
 import { PieChartPane } from "../components/PieChartPane";
 import { BarChartPane } from "../components/BarChartPane";
 import { AddQueuePane } from "../components/AddQueuePane";
+import { LiveStatusPane } from "../components/LiveStatusPane";
 import { SchedulerPane } from "../components/SchedulerPane";
 import { getDoneTotal, getPartsDataset, getProjectRange, listQueue } from "../api";
 import type { ErrorCount, OccurrenceRange, OutsideRangeSummary, PartsDataset, PartsStatusSummary, ProjectRange } from "../types";
@@ -149,6 +150,7 @@ export function PartsView() {
                 </div>
                 <div className="parts-view-column parts-view-column-side">
                     <AddQueuePane />
+                    <LiveStatusPane />
                     <SchedulerPane />
                 </div>
             </div>

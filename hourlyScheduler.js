@@ -11,10 +11,6 @@ const SCRIPT_ID = 1;
 // happened to start. Checking every minute instead keeps that gap under a minute.
 const TICK_INTERVAL_MS = 60 * 1000;
 const MAX_LOOKAHEAD_MINUTES = 7 * 24 * 60;
-// The idle-server path opens its own PDM SQL connection to check for running tasks - throttled
-// separately from TICK_INTERVAL_MS so enabling idleServer doesn't hit the PDM database every
-// minute, only every 5.
-const IDLE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 let lastIdleCheckAt = 0;
 function weekMinutes(day, hour, minute = 0) {
     return day * 24 * 60 + hour * 60 + minute;
@@ -84,7 +80,11 @@ async function tick() {
     }
     const hours = Math.ceil(minutesUntilReady(now, config) / 60);
     logStatusChange(`[scheduler] hours until ready to work: ${hours}`);
-    if (config.idleServer.activated && !(0, jobScheduler_1.isRunning)(SCRIPT_ID) && now.getTime() - lastIdleCheckAt >= IDLE_CHECK_INTERVAL_MS) {
+    // The idle-server path opens its own PDM SQL connection to check for running tasks - throttled
+    // separately from TICK_INTERVAL_MS, at the interval set in the UI, so enabling idleServer
+    // doesn't hit the PDM database every minute.
+    const idleCheckIntervalMs = config.idleServer.intervalMinutes * 60 * 1000;
+    if (config.idleServer.activated && !(0, jobScheduler_1.isRunning)(SCRIPT_ID) && now.getTime() - lastIdleCheckAt >= idleCheckIntervalMs) {
         lastIdleCheckAt = now.getTime();
         try {
             if (await isPdmIdle()) {

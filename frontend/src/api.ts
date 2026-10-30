@@ -1,4 +1,4 @@
-import type { SchedulerConfig, QueueJob, ProjectRange, PartsDataset, DailyCount } from "./types";
+import type { SchedulerConfig, QueueJob, ProjectRange, PartsDataset, DailyCount, SchedulerStatus, RunningTask } from "./types";
 
 const API_BASE = "/api";
 
@@ -27,6 +27,14 @@ export function updateSchedulerConfig(patch: Partial<SchedulerConfig>): Promise<
     return request<SchedulerConfig>("/scheduler/config", {
         method: "POST",
         body: JSON.stringify(patch),
+    });
+}
+
+/** Kicks off script 1 (see jobScheduler.ts/hourlyScheduler.ts) outside its normal schedule/idle
+ * check. 409s if it's already running. */
+export function runSchedulerNow(maxPack?: number): Promise<{ message: string }> {
+    return request<{ message: string }>(`/scheduler/run/1${maxPack ? `?maxPack=${maxPack}` : ""}`, {
+        method: "POST",
     });
 }
 
@@ -74,4 +82,14 @@ export function getDailyActivity(days?: number): Promise<DailyCount[]> {
 /** Raw row count of the `done` table - the dashboard's headline "Done" total. */
 export function getDoneTotal(): Promise<{ count: number }> {
     return request<{ count: number }>("/activity/done-total");
+}
+
+/** Whether script1 is running right now, and which file it's on - cheap, safe to poll often. */
+export function getSchedulerStatus(): Promise<SchedulerStatus> {
+    return request<SchedulerStatus>("/scheduler/status");
+}
+
+/** Snapshot of the PDM Operations tab queue (tasks queued or actively running). */
+export function getRunningPdmTasks(): Promise<RunningTask[]> {
+    return request<RunningTask[]>("/pdm/running-tasks");
 }
