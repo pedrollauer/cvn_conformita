@@ -139,8 +139,10 @@ finally
 /// <summary>
 /// Drains up to <paramref name="maxPack"/> jobs from the `queue` table, running
 /// <see cref="Scripts.Update"/> on each path exactly as the old /update handler did (one at a
-/// time, SW/PDM kept warm across the whole call), removing jobs that succeeded and leaving
-/// failures queued for retry. Every run - not just when the queue happens to be empty - also
+/// time, SW/PDM kept warm across the whole call), removing jobs that succeeded and re-queuing
+/// failures at the bottom (new id) so a file that keeps failing doesn't keep eating the front
+/// of the queue - ordered by id ASC, it would otherwise get retried ahead of newer jobs on every
+/// run and could starve them entirely. Every run - not just when the queue happens to be empty - also
 /// picks up to <paramref name="maxPack"/> `update_flow` rows that are started but not yet
 /// approved (the old script1.ts fallback, which only ran when the queue was empty - that gap
 /// let files stuck mid-update, e.g. with checkout=1 but update/checkin still 0, sit untouched
@@ -156,9 +158,12 @@ static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int
     foreach (QueueRow job in jobs)
     {
         bool ok = ProcessFile(sw, pdm, sql, job.path);
-        if (ok)
+        sql.conn.Execute("DELETE FROM queue WHERE id = ?", job.id);
+        if (!ok)
         {
-            sql.conn.Execute("DELETE FROM queue WHERE id = ?", job.id);
+            // Re-insert so it gets a fresh (higher) id and lands at the bottom of the
+            // `ORDER BY id ASC` queue instead of blocking newer jobs on every retry.
+            sql.conn.Execute("INSERT INTO queue (code, path) VALUES (?, ?)", job.code, job.path);
         }
     }
 
