@@ -137,6 +137,7 @@ public class Update
                                         update.checkin = 0;
                                         update.update = 0;
                                         currentState = 2;
+                                        attempt++;
                                     }
                                 }
                                 break;
