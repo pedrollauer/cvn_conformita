@@ -62,6 +62,10 @@ public class Update
                 while (currentState < 4 && attempt <= max_attempts)
                 {
                     int stateBeforeStep = currentState;
+                    if (!pdm.vault.IsLoggedIn)
+                    {
+                        pdm.vault.Login(pdm.userName, pdm.passWord, pdm.vaultName);
+                    }
 
                     try
                     {

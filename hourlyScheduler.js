@@ -5,7 +5,6 @@ exports.startHourlyScheduler = startHourlyScheduler;
 const schedulerConfig_1 = require("./schedulerConfig");
 const jobScheduler_1 = require("./jobScheduler");
 const pdm_sql_1 = require("./interface/pdm_sql");
-const script1_1 = require("./scripts/script1");
 const SCRIPT_ID = 1;
 // Was 1 hour, timed from server startup rather than from wall-clock boundaries - a window
 // opening at e.g. 19:00 could go unnoticed for up to 59 minutes depending on when the server
@@ -97,7 +96,7 @@ async function tick() {
     if (isReadyToWork(now, config)) {
         logStatusChange("[scheduler] inside a scheduled window");
         if (!(0, jobScheduler_1.isRunning)(SCRIPT_ID)) {
-            (0, jobScheduler_1.runScript)(SCRIPT_ID, script1_1.MAX_PACK).catch((err) => {
+            (0, jobScheduler_1.runScript)(SCRIPT_ID, config.maxPack).catch((err) => {
                 console.error("[scheduler] scheduled run failed:", err);
             });
         }

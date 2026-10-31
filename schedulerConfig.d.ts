@@ -16,18 +16,21 @@ export interface IdleServerConfig {
     intervalMinutes: number;
 }
 export interface SchedulerConfig {
+    maxPack: number;
     weekend: WeekendConfig;
     week: WeekConfig;
     idleServer: IdleServerConfig;
 }
+export declare const DEFAULT_MAX_PACK = 50;
 export declare const DEFAULT_IDLE_SERVER_MAX_PACK = 20;
 export declare const DEFAULT_IDLE_SERVER_INTERVAL_MINUTES = 5;
 export declare function getSchedulerConfig(): SchedulerConfig;
 export interface SchedulerConfigPatch {
+    maxPack?: unknown;
     weekend?: Partial<Record<"startDay" | "startHour" | "endDay" | "endHour", unknown>>;
     week?: Partial<Record<"startHour" | "endHour", unknown>>;
     idleServer?: Partial<Record<"activated" | "maxPack" | "intervalMinutes", unknown>>;
 }
-/** Applies a partial update to whichever of the three config sections are present, validating each field, and persists the result to scheduler-config.txt. */
+/** Applies a partial update to whichever of the config sections/fields are present, validating each field, and persists the result to scheduler-config.txt. */
 export declare function updateSchedulerConfig(patch: SchedulerConfigPatch): SchedulerConfig;
 //# sourceMappingURL=schedulerConfig.d.ts.map

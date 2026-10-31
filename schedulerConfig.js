@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_IDLE_SERVER_INTERVAL_MINUTES = exports.DEFAULT_IDLE_SERVER_MAX_PACK = void 0;
+exports.DEFAULT_IDLE_SERVER_INTERVAL_MINUTES = exports.DEFAULT_IDLE_SERVER_MAX_PACK = exports.DEFAULT_MAX_PACK = void 0;
 exports.getSchedulerConfig = getSchedulerConfig;
 exports.updateSchedulerConfig = updateSchedulerConfig;
 const node_fs_1 = require("node:fs");
@@ -53,9 +53,11 @@ function parseBoolean(value, field) {
     }
     throw new Error(`Invalid ${field} (expected a boolean): ${JSON.stringify(value)}`);
 }
+exports.DEFAULT_MAX_PACK = 50;
 exports.DEFAULT_IDLE_SERVER_MAX_PACK = 20;
 exports.DEFAULT_IDLE_SERVER_INTERVAL_MINUTES = 5;
 const DEFAULT_CONFIG = {
+    maxPack: exports.DEFAULT_MAX_PACK,
     weekend: { startDay: 6, startHour: 0, endDay: 0, endHour: 18 }, // Saturday 00:00 -> Sunday 18:00
     week: { startHour: 19, endHour: 6 }, // every night, 19:00 -> 06:00
     idleServer: {
@@ -70,6 +72,7 @@ const DEFAULT_CONFIG = {
 // takes effect without restarting the server.
 const CONFIG_FILE_PATH = (0, node_path_1.join)(__dirname, "scheduler-config.txt");
 const FIELD_PARSERS = {
+    maxPack: (v) => parsePositiveInt(v, "maxPack"),
     "weekend.startDay": parseWeekday,
     "weekend.startHour": (v) => parseHour(v, "weekend.startHour"),
     "weekend.endDay": parseWeekday,
@@ -82,6 +85,7 @@ const FIELD_PARSERS = {
 };
 function serializeConfig(config) {
     return ([
+        `maxPack = ${config.maxPack}`,
         `weekend.startDay = ${config.weekend.startDay}`,
         `weekend.startHour = ${config.weekend.startHour}`,
         `weekend.endDay = ${config.weekend.endDay}`,
@@ -147,6 +151,7 @@ function readConfigFile() {
         }
     };
     return {
+        maxPack: field("maxPack", DEFAULT_CONFIG.maxPack),
         weekend: {
             startDay: field("weekend.startDay", DEFAULT_CONFIG.weekend.startDay),
             startHour: field("weekend.startHour", DEFAULT_CONFIG.weekend.startHour),
@@ -167,14 +172,18 @@ function readConfigFile() {
 function getSchedulerConfig() {
     return readConfigFile();
 }
-/** Applies a partial update to whichever of the three config sections are present, validating each field, and persists the result to scheduler-config.txt. */
+/** Applies a partial update to whichever of the config sections/fields are present, validating each field, and persists the result to scheduler-config.txt. */
 function updateSchedulerConfig(patch) {
     const current = readConfigFile();
     const next = {
+        maxPack: current.maxPack,
         weekend: { ...current.weekend },
         week: { ...current.week },
         idleServer: { ...current.idleServer },
     };
+    if (patch.maxPack !== undefined) {
+        next.maxPack = parsePositiveInt(patch.maxPack, "maxPack");
+    }
     if (patch.weekend) {
         const { startDay, startHour, endDay, endHour } = patch.weekend;
         if (startDay !== undefined)

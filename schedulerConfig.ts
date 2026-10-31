@@ -76,15 +76,18 @@ export interface IdleServerConfig {
 }
 
 export interface SchedulerConfig {
+    maxPack: number;
     weekend: WeekendConfig;
     week: WeekConfig;
     idleServer: IdleServerConfig;
 }
 
+export const DEFAULT_MAX_PACK = 50;
 export const DEFAULT_IDLE_SERVER_MAX_PACK = 20;
 export const DEFAULT_IDLE_SERVER_INTERVAL_MINUTES = 5;
 
 const DEFAULT_CONFIG: SchedulerConfig = {
+    maxPack: DEFAULT_MAX_PACK,
     weekend: { startDay: 6, startHour: 0, endDay: 0, endHour: 18 }, // Saturday 00:00 -> Sunday 18:00
     week: { startHour: 19, endHour: 6 }, // every night, 19:00 -> 06:00
     idleServer: {
@@ -101,6 +104,7 @@ const DEFAULT_CONFIG: SchedulerConfig = {
 const CONFIG_FILE_PATH = join(__dirname, "scheduler-config.txt");
 
 const FIELD_PARSERS: Record<string, (value: string) => unknown> = {
+    maxPack: (v) => parsePositiveInt(v, "maxPack"),
     "weekend.startDay": parseWeekday,
     "weekend.startHour": (v) => parseHour(v, "weekend.startHour"),
     "weekend.endDay": parseWeekday,
@@ -115,6 +119,7 @@ const FIELD_PARSERS: Record<string, (value: string) => unknown> = {
 function serializeConfig(config: SchedulerConfig): string {
     return (
         [
+            `maxPack = ${config.maxPack}`,
             `weekend.startDay = ${config.weekend.startDay}`,
             `weekend.startHour = ${config.weekend.startHour}`,
             `weekend.endDay = ${config.weekend.endDay}`,
@@ -185,6 +190,7 @@ function readConfigFile(): SchedulerConfig {
     };
 
     return {
+        maxPack: field("maxPack", DEFAULT_CONFIG.maxPack),
         weekend: {
             startDay: field("weekend.startDay", DEFAULT_CONFIG.weekend.startDay),
             startHour: field("weekend.startHour", DEFAULT_CONFIG.weekend.startHour),
@@ -208,19 +214,25 @@ export function getSchedulerConfig(): SchedulerConfig {
 }
 
 export interface SchedulerConfigPatch {
+    maxPack?: unknown;
     weekend?: Partial<Record<"startDay" | "startHour" | "endDay" | "endHour", unknown>>;
     week?: Partial<Record<"startHour" | "endHour", unknown>>;
     idleServer?: Partial<Record<"activated" | "maxPack" | "intervalMinutes", unknown>>;
 }
 
-/** Applies a partial update to whichever of the three config sections are present, validating each field, and persists the result to scheduler-config.txt. */
+/** Applies a partial update to whichever of the config sections/fields are present, validating each field, and persists the result to scheduler-config.txt. */
 export function updateSchedulerConfig(patch: SchedulerConfigPatch): SchedulerConfig {
     const current = readConfigFile();
     const next: SchedulerConfig = {
+        maxPack: current.maxPack,
         weekend: { ...current.weekend },
         week: { ...current.week },
         idleServer: { ...current.idleServer },
     };
+
+    if (patch.maxPack !== undefined) {
+        next.maxPack = parsePositiveInt(patch.maxPack, "maxPack");
+    }
 
     if (patch.weekend) {
         const { startDay, startHour, endDay, endHour } = patch.weekend;

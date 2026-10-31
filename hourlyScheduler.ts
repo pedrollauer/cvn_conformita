@@ -1,7 +1,6 @@
 import { getSchedulerConfig, SchedulerConfig, WeekendConfig, WeekConfig } from "./schedulerConfig";
 import { runScript, isRunning } from "./jobScheduler";
 import { PdmSql } from "./interface/pdm_sql";
-import { MAX_PACK } from "./scripts/script1";
 
 const SCRIPT_ID = 1;
 // Was 1 hour, timed from server startup rather than from wall-clock boundaries - a window
@@ -116,7 +115,7 @@ async function tick(): Promise<void> {
     if (isReadyToWork(now, config)) {
         logStatusChange("[scheduler] inside a scheduled window");
         if (!isRunning(SCRIPT_ID)) {
-            runScript(SCRIPT_ID, MAX_PACK).catch((err) => {
+            runScript(SCRIPT_ID, config.maxPack).catch((err) => {
                 console.error("[scheduler] scheduled run failed:", err);
             });
         }

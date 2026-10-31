@@ -20,6 +20,7 @@ export interface IdleServerConfig {
 }
 
 export interface SchedulerConfig {
+    maxPack: number;
     weekend: WeekendConfig;
     week: WeekConfig;
     idleServer: IdleServerConfig;

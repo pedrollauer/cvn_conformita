@@ -73,7 +73,11 @@ export function SchedulerPane() {
         );
     }
 
-    const { weekend, week, idleServer } = config;
+    const { maxPack, weekend, week, idleServer } = config;
+
+    function setMaxPack(value: number) {
+        setConfig((current) => (current ? { ...current, maxPack: value } : current));
+    }
 
     function setWeekend(patch: Partial<WeekendConfig>) {
         setConfig((current) => (current ? { ...current, weekend: { ...current.weekend, ...patch } } : current));
@@ -92,6 +96,27 @@ export function SchedulerPane() {
             <h2>Scheduler</h2>
 
             <div className="scheduler-grid">
+                <section className="scheduler-card scheduler-card-wide">
+                    <h3>Scheduled runs</h3>
+                    <div className="scheduler-fields">
+                        <label className="scheduler-field">
+                            <span>Max pack</span>
+                            <input
+                                type="number"
+                                min={1}
+                                value={maxPack}
+                                onChange={(e) => setMaxPack(Number(e.target.value))}
+                                className="scheduler-hour-input"
+                            />
+                        </label>
+                    </div>
+                    <div className="scheduler-card-actions">
+                        <button type="button" onClick={() => save({ maxPack }, "Max pack")}>
+                            Save
+                        </button>
+                    </div>
+                </section>
+
                 <section className="scheduler-card">
                     <h3>Week</h3>
                     <div className="scheduler-fields">
