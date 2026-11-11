@@ -137,7 +137,12 @@ export function PartsView() {
                 <div className="parts-view-column">
                     <DailyActivityPane />
                     {loadError && <p className="parts-view-error">Failed to load parts data: {loadError}</p>}
-                    <PieChartPane status={status} outsideRange={outsideRange} noProjectLink={noProjectLink} />
+                    <PieChartPane
+                        status={status}
+                        outsideRange={outsideRange}
+                        noProjectLink={noProjectLink}
+                        loading={!dataset}
+                    />
                     <div className="parts-view-filters">
                         {projectRange && hvRange ? (
                             <HvSlider value={hvRange} onChange={setHvRange} min={projectRange.min} max={projectRange.max} />
@@ -146,7 +151,7 @@ export function PartsView() {
                         )}
                         <OccurrenceFilter value={occurrences} onChange={setOccurrences} />
                     </div>
-                    <BarChartPane errors={errors} />
+                    <BarChartPane errors={errors} loading={!dataset} />
                 </div>
                 <div className="parts-view-column parts-view-column-side">
                     <AddQueuePane />

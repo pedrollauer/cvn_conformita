@@ -161,14 +161,12 @@ static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int
         sql.conn.Execute("DELETE FROM queue WHERE id = ?", job.id);
         if (!ok)
         {
-            // Re-insert so it gets a fresh (higher) id and lands at the bottom of the
-            // `ORDER BY id ASC` queue instead of blocking newer jobs on every retry.
+            // Re-insert so it gets a fresh id
             sql.conn.Execute("INSERT INTO queue (code, path) VALUES (?, ?)", job.code, job.path);
         }
     }
 
-    // Excludes paths already handled above via `queue` so a file isn't processed twice in the
-    // same run just because it happened to be both queued and already sitting in update_flow.
+    // Excludes paths already handled above via `queue` 
     List<DB.update_flow> pending = sql.conn.Table<DB.update_flow>()
         .Where(d => d.approve != 1)
         .OrderBy(d => d.date)
@@ -235,7 +233,8 @@ static bool ProcessFile(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, s
 
     try
     {
-        _ = new Scripts.Update(sw, pdm, sql, path);
+        var update = new Scripts.Update(sw, pdm, sql, path);
+        update.Begin();
     }
     catch (Exception ex)
     {

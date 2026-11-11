@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getDailyActivity } from "../api";
 import type { DailyCount } from "../types";
+import { ChartSpinner } from "./ChartSpinner";
 import "./ChartPane.css";
 import "./DailyActivityPane.css";
 
@@ -106,35 +107,39 @@ export function DailyActivityPane() {
                 </span>
             </div>
 
-            <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={daily ?? []} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid vertical={false} stroke="var(--gridline)" />
-                    <XAxis
-                        dataKey="date"
-                        tickFormatter={formatDay}
-                        tickLine={false}
-                        axisLine={{ stroke: "var(--baseline)" }}
-                        tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-                        interval={Math.ceil(WINDOW_DAYS / 10)}
-                    />
-                    <YAxis
-                        allowDecimals={false}
-                        tickLine={false}
-                        axisLine={{ stroke: "var(--baseline)" }}
-                        tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-                        width={32}
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--gridline)" }} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={16}>
-                        {(daily ?? []).map((entry) => (
-                            <Cell
-                                key={entry.date}
-                                fill={isWeekend(entry.date) ? "var(--series-4)" : "var(--series-1)"}
-                            />
-                        ))}
-                    </Bar>
-                </BarChart>
-            </ResponsiveContainer>
+            {daily === null ? (
+                <ChartSpinner height={200} />
+            ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="var(--gridline)" />
+                        <XAxis
+                            dataKey="date"
+                            tickFormatter={formatDay}
+                            tickLine={false}
+                            axisLine={{ stroke: "var(--baseline)" }}
+                            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+                            interval={Math.ceil(WINDOW_DAYS / 10)}
+                        />
+                        <YAxis
+                            allowDecimals={false}
+                            tickLine={false}
+                            axisLine={{ stroke: "var(--baseline)" }}
+                            tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                            width={32}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--gridline)" }} />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={16}>
+                            {daily.map((entry) => (
+                                <Cell
+                                    key={entry.date}
+                                    fill={isWeekend(entry.date) ? "var(--series-4)" : "var(--series-1)"}
+                                />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            )}
         </div>
     );
 }

@@ -10,7 +10,7 @@ namespace Interface
         public IEdmVault5 vault;
         private IEdmSearch9 search;
 
-        private String userName = "p.lauer";
+        public String userName = "p.lauer";
         public String passWord = "1tYkJ6=_218#Ay";
         public String vaultName = "_CavannaPDM";
         public int rootFolderID;

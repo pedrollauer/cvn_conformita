@@ -39,6 +39,16 @@ namespace Scripts
                         Console.WriteLine($"Queued for approval: {file.Name}");
                     }
 
+                    if(file.CurrentState.Name == "In Studio")
+                    {
+                        d.approve = 1;
+                        sql.conn.Update(d);
+
+                        sql.conn.Insert(new DB.done{ code = d.code, timestamp= DateTimeOffset.UtcNow.ToUnixTimeSeconds() });
+                        done++;
+                        continue;
+                    }
+
                     if(file.CurrentState.Name == "Approvato")
                     {
                         d.approve = 1;
@@ -46,6 +56,7 @@ namespace Scripts
 
                         sql.conn.Insert(new DB.done{ code = d.code, timestamp= DateTimeOffset.UtcNow.ToUnixTimeSeconds() });
                         done++;
+                        continue;
                     }
                 }
                 catch (Exception ex)

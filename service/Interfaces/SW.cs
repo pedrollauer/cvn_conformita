@@ -929,6 +929,45 @@ namespace Interface
             }
         }
 
+        public void Close()
+        {
+           this.swApp.CloseDoc(this.model.GetTitle());
+        }
+        public int GetDocType(string path)
+        {
+            int docType = path.ToLower().EndsWith(".sldprt") ? 1 : path.ToLower().EndsWith(".sldasm") ? 2 : path.ToLower().EndsWith(".slddrw") ? 3 : 0;
+            return docType;
+
+        }
+        public bool Open(string path)
+        {
+
+            int docType = GetDocType(path);
+            try
+            {
+                int err = 0;
+                int warn = 0;
+                this.model = this.swApp.OpenDoc6(path.Trim(), docType,
+                    (int)(swOpenDocOptions_e.swOpenDocOptions_Silent | swOpenDocOptions_e.swOpenDocOptions_LoadModel),
+                    "", ref err, ref warn);
+
+                if (err == 0)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
+                return false;
+            }
+        }
 
         public bool Conform(string path)
         {
@@ -939,7 +978,7 @@ namespace Interface
             if (string.IsNullOrWhiteSpace(path))
                 return false;
 
-            int docType = path.ToLower().EndsWith(".sldprt") ? 1 : path.ToLower().EndsWith(".sldasm") ? 2 : path.ToLower().EndsWith(".slddrw") ? 3 : 0;
+            int docType = GetDocType(path);
 
             try
             {

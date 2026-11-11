@@ -1,11 +1,13 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { OutsideRangeSummary, PartsStatusSummary } from "../types";
+import { ChartSpinner } from "./ChartSpinner";
 import "./ChartPane.css";
 
 interface PieChartPaneProps {
     status: PartsStatusSummary;
     outsideRange?: OutsideRangeSummary;
     noProjectLink?: OutsideRangeSummary;
+    loading?: boolean;
 }
 
 const SLICE_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)"];
@@ -26,7 +28,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
     );
 }
 
-export function PieChartPane({ status, outsideRange, noProjectLink }: PieChartPaneProps) {
+export function PieChartPane({ status, outsideRange, noProjectLink, loading }: PieChartPaneProps) {
     const data = [
         { name: "Done", value: status.done },
         { name: "In queue", value: status.inQueue },
@@ -40,6 +42,9 @@ export function PieChartPane({ status, outsideRange, noProjectLink }: PieChartPa
             </div>
             <div className="chart-pane-body chart-pane-body-split">
                 <div className="chart-pane-pie">
+                    {loading ? (
+                        <ChartSpinner height={220} />
+                    ) : (
                     <ResponsiveContainer width="100%" height={220}>
                         <PieChart>
                             <Pie
@@ -65,6 +70,7 @@ export function PieChartPane({ status, outsideRange, noProjectLink }: PieChartPa
                             <Legend verticalAlign="bottom" height={28} />
                         </PieChart>
                     </ResponsiveContainer>
+                    )}
                 </div>
                 <dl className="chart-pane-stats">
                     <div>

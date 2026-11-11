@@ -1,9 +1,11 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { ErrorCount } from "../types";
+import { ChartSpinner } from "./ChartSpinner";
 import "./ChartPane.css";
 
 interface BarChartPaneProps {
     errors: ErrorCount[];
+    loading?: boolean;
 }
 
 /** Gravity tiers from the Errors catalog's `weight` column. Unrated errors (weight null) get
@@ -48,7 +50,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
     );
 }
 
-export function BarChartPane({ errors }: BarChartPaneProps) {
+export function BarChartPane({ errors, loading }: BarChartPaneProps) {
     return (
         <div className="chart-pane">
             <div className="chart-pane-header">
@@ -65,30 +67,34 @@ export function BarChartPane({ errors }: BarChartPaneProps) {
                 ))}
             </div>
 
-            <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={errors} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid vertical={false} stroke="var(--gridline)" />
-                    <XAxis
-                        dataKey="label"
-                        tickLine={false}
-                        axisLine={{ stroke: "var(--baseline)" }}
-                        tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-                    />
-                    <YAxis
-                        allowDecimals={false}
-                        label={{ value: "# Files", angle: -90, position: "insideLeft", fill: "var(--text-muted)", fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={{ stroke: "var(--baseline)" }}
-                        tick={{ fill: "var(--text-muted)", fontSize: 12 }}
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--gridline)" }} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={24}>
-                        {errors.map((entry) => (
-                            <Cell key={entry.code} fill={SEVERITY_COLOR[severityTier(entry.weight)]} />
-                        ))}
-                    </Bar>
-                </BarChart>
-            </ResponsiveContainer>
+            {loading ? (
+                <ChartSpinner height={220} />
+            ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={errors} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="var(--gridline)" />
+                        <XAxis
+                            dataKey="label"
+                            tickLine={false}
+                            axisLine={{ stroke: "var(--baseline)" }}
+                            tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                        />
+                        <YAxis
+                            allowDecimals={false}
+                            label={{ value: "# Files", angle: -90, position: "insideLeft", fill: "var(--text-muted)", fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={{ stroke: "var(--baseline)" }}
+                            tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--gridline)" }} />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={24}>
+                            {errors.map((entry) => (
+                                <Cell key={entry.code} fill={SEVERITY_COLOR[severityTier(entry.weight)]} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            )}
         </div>
     );
 }
