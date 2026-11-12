@@ -6,6 +6,35 @@
     box-shadow: var(--shadow-card);
 }
 
+/* Applied to whichever chart-pane is the last item in a flex column (see PartsView's left
+   column) so it grows to absorb any leftover height instead of leaving empty space below it -
+   that's what keeps the column's actual bottom edge lined up with a taller sibling column. */
+.chart-pane-fill {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    /* Without this, a flex item's automatic min-height is "auto" (its content's natural size),
+       which silently overrides flex-shrink and let this card grow to its chart's intrinsic size
+       instead of being constrained to the column's fixed height - the classic flexbox pitfall. */
+    min-height: 0;
+}
+
+.chart-pane-fill-chart {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Recharts' ResponsiveContainer with height="100%" unreliably measures 0 here (percentage-height
+   resolution against a flex item's computed height is finicky with its internal ResizeObserver
+   timing) - sizing it via flex instead, the same way any other flex child would be, is the
+   well-known workaround and reliably gives it the parent's full height. */
+.chart-pane-fill-chart .recharts-responsive-container {
+    flex: 1;
+    min-height: 0;
+}
+
 .chart-pane-header {
     display: flex;
     align-items: baseline;

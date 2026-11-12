@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { DailyActivityPane } from "../components/DailyActivityPane";
 import { HvSlider } from "../components/HvSlider";
@@ -43,6 +43,41 @@ export function PartsView() {
     const inQueue = queue.length;
     const [hvRange, setHvRange] = useState<[number, number] | null>(null);
     const [occurrences, setOccurrences] = useState<OccurrenceRange>({ min: 0, max: null });
+
+    // Matches the graphs column's height to the scheduler column's actual rendered height
+    // (rather than relying on CSS Grid's default stretch, which only equalizes the two columns'
+    // *containers* - it doesn't make a shorter column's own content fill that extra space).
+    // Measured via ResizeObserver since the scheduler column's height is dynamic (live PDM task
+    // list, scheduler cards toggling), not just a one-time layout computation.
+    const sideColumnRef = useRef<HTMLDivElement>(null);
+    const [sideHeight, setSideHeight] = useState<number | undefined>(undefined);
+
+    useEffect(() => {
+        const el = sideColumnRef.current;
+        if (!el) {
+            return;
+        }
+        // Only matches heights in the two-column desktop layout (see PartsView.css's 860px
+        // breakpoint) - once columns stack, the right column sits below the left, not beside
+        // it, so forcing the same height no longer means anything.
+        const isTwoColumn = window.matchMedia("(min-width: 861px)");
+        const observer = new ResizeObserver(([entry]) => {
+            if (entry) {
+                setSideHeight(isTwoColumn.matches ? entry.contentRect.height : undefined);
+            }
+        });
+        observer.observe(el);
+
+        const handleLayoutChange = () => {
+            setSideHeight(isTwoColumn.matches ? el.getBoundingClientRect().height : undefined);
+        };
+        isTwoColumn.addEventListener("change", handleLayoutChange);
+
+        return () => {
+            observer.disconnect();
+            isTwoColumn.removeEventListener("change", handleLayoutChange);
+        };
+    }, []);
 
     // hvRange can only be initialized once projectRange has loaded (to clamp against the real
     // dataset bounds), so it's set here rather than from useState's initializer.
@@ -152,7 +187,11 @@ export function PartsView() {
         <div className="parts-view">
             <PageHeader title="Parts view" />
             <div className="parts-view-body">
-                <div className="parts-view-column">
+                {/* An explicit height, not just min-height - a flex column with only min-height
+                    has an "indefinite" main size per the flex spec, so flex:1 children (like
+                    BarChartPane below) have no basis to distribute extra space against and fall
+                    back to Recharts' own intrinsic sizing instead of filling this column. */}
+                <div className="parts-view-column" style={{ height: sideHeight }}>
                     <DailyActivityPane doneTotal={doneTotal} todoTotal={status.todo} totalTodo={totalTodo} />
                     {loadError && <p className="parts-view-error">Failed to load parts data: {loadError}</p>}
                     <PieChartPane status={status} noProjectLink={noProjectLink} hvRange={hvRange ?? undefined} loading={!dataset} />
@@ -167,7 +206,7 @@ export function PartsView() {
                     <FamilyMatrixPane families={families} loading={!dataset} />
                     <BarChartPane errors={errors} loading={!dataset} />
                 </div>
-                <div className="parts-view-column parts-view-column-side">
+                <div className="parts-view-column parts-view-column-side" ref={sideColumnRef}>
                     <AddQueuePane />
                     <LiveStatusPane />
                     <SchedulerPane />

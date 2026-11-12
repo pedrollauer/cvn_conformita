@@ -5,6 +5,11 @@
 .parts-view-body {
     display: grid;
     grid-template-columns: 2fr 1fr;
+    /* Not the default "stretch" - that only equalizes the two columns' container heights, it
+       doesn't make a shorter column's own content expand to fill that space. The graphs column
+       gets an explicit min-height instead (see PartsView.tsx's ResizeObserver), with its last
+       chart growing into any resulting gap via .chart-pane-fill. */
+    align-items: start;
     gap: 1.25rem;
     padding: 1.25rem 1.5rem;
     max-width: 1200px;
