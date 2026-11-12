@@ -41,6 +41,12 @@
     color: var(--text-secondary);
 }
 
+.scheduler-card-note {
+    margin: -0.4rem 0 0;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
 .scheduler-fields {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));

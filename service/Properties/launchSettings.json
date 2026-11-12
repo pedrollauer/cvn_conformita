@@ -1,9 +1,8 @@
 {
-  "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
     "update": {
       "commandName": "Project",
-      "commandLineArgs": "update 1"
+      "commandLineArgs": "update 50"
     },
     "approve": {
       "commandName": "Project",
@@ -13,5 +12,6 @@
       "commandName": "Project",
       "commandLineArgs": "freezebar C:\\PATH\\TO\\TEST\\FILE.SLDPRT"
     }
-  }
+  },
+  "$schema": "https://json.schemastore.org/launchsettings.json"
 }

@@ -5,12 +5,17 @@ import "./ChartPane.css";
 
 interface PieChartPaneProps {
     status: PartsStatusSummary;
-    outsideRange?: OutsideRangeSummary;
     noProjectLink?: OutsideRangeSummary;
+    /** The currently selected HV range, shown next to the "Todo" label so the figure below it is
+     * never read as the all-time total - it's scoped to this range. */
+    hvRange?: [number, number];
     loading?: boolean;
 }
 
-const SLICE_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)"];
+// Done/In queue/Todo, matching the order `data` is built in below. Todo uses the same red as
+// the rest of the app's "most remaining/critical" indicators (DailyActivityPane's "Total to do"
+// line, FamilyMatrixPane's top tier) rather than the neutral aqua it used before.
+const SLICE_COLORS = ["var(--series-1)", "var(--series-2)", "var(--status-critical)"];
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
     if (!active || !payload || payload.length === 0) {
@@ -28,7 +33,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
     );
 }
 
-export function PieChartPane({ status, outsideRange, noProjectLink, loading }: PieChartPaneProps) {
+export function PieChartPane({ status, noProjectLink, hvRange, loading }: PieChartPaneProps) {
     const data = [
         { name: "Done", value: status.done },
         { name: "In queue", value: status.inQueue },
@@ -75,27 +80,16 @@ export function PieChartPane({ status, outsideRange, noProjectLink, loading }: P
                 <dl className="chart-pane-stats">
                     <div>
                         <dt>Done</dt>
-                        <dd>{status.done.toLocaleString()}</dd>
+                        <dd style={{ color: "var(--series-1)" }}>{status.done.toLocaleString()}</dd>
                     </div>
                     <div>
                         <dt>In queue</dt>
                         <dd>{status.inQueue.toLocaleString()}</dd>
                     </div>
                     <div>
-                        <dt>Todo</dt>
-                        <dd>{status.todo.toLocaleString()}</dd>
+                        <dt>Todo {hvRange && `[HV${hvRange[0]} - HV${hvRange[1]}]`}</dt>
+                        <dd style={{ color: "var(--status-critical)" }}>{status.todo.toLocaleString()}</dd>
                     </div>
-                    {outsideRange && (
-                        <div>
-                            <dt>Outside HV range</dt>
-                            <dd>{outsideRange.total.toLocaleString()}</dd>
-                            {outsideRange.total > 0 && (
-                                <span className="chart-pane-stats-note">
-                                    {outsideRange.done.toLocaleString()} done, {outsideRange.todo.toLocaleString()} todo
-                                </span>
-                            )}
-                        </div>
-                    )}
                     {noProjectLink && (
                         <div>
                             <dt>No HV project link</dt>

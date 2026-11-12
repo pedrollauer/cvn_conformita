@@ -3,7 +3,10 @@ import { ThemeToggle } from "./ThemeToggle";
 import "./PageHeader.css";
 
 // Add a { to, label } entry here as each new page/route gets built.
-const NAV_LINKS = [{ to: "/", label: "Parts view" }];
+const NAV_LINKS = [
+    { to: "/parts-view", label: "Parts view" },
+    { to: "/console", label: "Console" },
+];
 
 interface PageHeaderProps {
     title: string;
@@ -19,7 +22,8 @@ export function PageHeader({ title }: PageHeaderProps) {
             <div className="page-header-right">
                 <nav className="page-nav">
                     {NAV_LINKS.map((link) => (
-                        <NavLink key={link.to} to={link.to} end>
+                        // Not `end`: e.g. /parts-view/family/2008 should still highlight "Parts view".
+                        <NavLink key={link.to} to={link.to}>
                             {link.label}
                         </NavLink>
                     ))}

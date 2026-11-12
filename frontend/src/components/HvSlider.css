@@ -1,5 +1,11 @@
 .hv-slider {
     display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.hv-slider-row {
+    display: flex;
     align-items: center;
     gap: 0.75rem;
 }
@@ -49,10 +55,38 @@
     outline-offset: 2px;
 }
 
-.hv-slider-value {
-    min-width: 10ch;
-    text-align: right;
+.hv-slider-inputs {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.hv-slider-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-primary);
+}
+
+.hv-slider-number-input {
+    width: 5.5rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.85rem;
     font-variant-numeric: tabular-nums;
+}
+
+.hv-slider-number-input:focus-visible {
+    outline: 2px solid var(--series-1);
+    outline-offset: 1px;
+}
+
+.hv-slider-input-sep {
+    color: var(--text-muted);
 }

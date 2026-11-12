@@ -25,6 +25,7 @@
 
 .chart-pane-body-split {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 1rem;
 }
@@ -85,6 +86,12 @@
     height: 10px;
     border-radius: 3px;
     flex-shrink: 0;
+}
+
+.chart-legend-swatch-line {
+    width: 14px;
+    height: 3px;
+    border-radius: 2px;
 }
 
 .chart-tooltip {

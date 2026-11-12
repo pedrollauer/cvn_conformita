@@ -38,6 +38,14 @@ function parseHour(value: unknown, field: string): number {
     throw new Error(`Invalid ${field} (expected an integer 0-23): ${JSON.stringify(value)}`);
 }
 
+function parseMinute(value: unknown, field: string): number {
+    const n = typeof value === "string" ? Number(value) : value;
+    if (typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 59) {
+        return n;
+    }
+    throw new Error(`Invalid ${field} (expected an integer 0-59): ${JSON.stringify(value)}`);
+}
+
 function parsePositiveInt(value: unknown, field: string): number {
     const n = typeof value === "string" ? Number(value) : value;
     if (typeof n === "number" && Number.isInteger(n) && n > 0) {
@@ -75,11 +83,27 @@ export interface IdleServerConfig {
     intervalMinutes: number;
 }
 
+/** A daily blackout window (same clock time every day, regardless of weekday) during which the
+ * update cycle must not start a new run - see hourlyScheduler.ts's isInMaintenanceWindow(). */
+export interface MaintenanceWindow {
+    startHour: number;
+    startMinute: number;
+    durationMinutes: number;
+}
+
+export interface MaintenanceConfig {
+    /** Nightly DB index rebuild - defaults to 02:30 for 1 hour. */
+    dbIndex: MaintenanceWindow;
+    /** Nightly DB backup - defaults to 05:10 for 1 hour. */
+    backup: MaintenanceWindow;
+}
+
 export interface SchedulerConfig {
     maxPack: number;
     weekend: WeekendConfig;
     week: WeekConfig;
     idleServer: IdleServerConfig;
+    maintenance: MaintenanceConfig;
 }
 
 export const DEFAULT_MAX_PACK = 50;
@@ -94,6 +118,10 @@ const DEFAULT_CONFIG: SchedulerConfig = {
         activated: false,
         maxPack: DEFAULT_IDLE_SERVER_MAX_PACK,
         intervalMinutes: DEFAULT_IDLE_SERVER_INTERVAL_MINUTES,
+    },
+    maintenance: {
+        dbIndex: { startHour: 2, startMinute: 30, durationMinutes: 60 },
+        backup: { startHour: 5, startMinute: 10, durationMinutes: 60 },
     },
 };
 
@@ -114,6 +142,12 @@ const FIELD_PARSERS: Record<string, (value: string) => unknown> = {
     "idleServer.activated": (v) => parseBoolean(v, "idleServer.activated"),
     "idleServer.maxPack": (v) => parsePositiveInt(v, "idleServer.maxPack"),
     "idleServer.intervalMinutes": (v) => parsePositiveInt(v, "idleServer.intervalMinutes"),
+    "maintenance.dbIndex.startHour": (v) => parseHour(v, "maintenance.dbIndex.startHour"),
+    "maintenance.dbIndex.startMinute": (v) => parseMinute(v, "maintenance.dbIndex.startMinute"),
+    "maintenance.dbIndex.durationMinutes": (v) => parsePositiveInt(v, "maintenance.dbIndex.durationMinutes"),
+    "maintenance.backup.startHour": (v) => parseHour(v, "maintenance.backup.startHour"),
+    "maintenance.backup.startMinute": (v) => parseMinute(v, "maintenance.backup.startMinute"),
+    "maintenance.backup.durationMinutes": (v) => parsePositiveInt(v, "maintenance.backup.durationMinutes"),
 };
 
 function serializeConfig(config: SchedulerConfig): string {
@@ -129,6 +163,12 @@ function serializeConfig(config: SchedulerConfig): string {
             `idleServer.activated = ${config.idleServer.activated}`,
             `idleServer.maxPack = ${config.idleServer.maxPack}`,
             `idleServer.intervalMinutes = ${config.idleServer.intervalMinutes}`,
+            `maintenance.dbIndex.startHour = ${config.maintenance.dbIndex.startHour}`,
+            `maintenance.dbIndex.startMinute = ${config.maintenance.dbIndex.startMinute}`,
+            `maintenance.dbIndex.durationMinutes = ${config.maintenance.dbIndex.durationMinutes}`,
+            `maintenance.backup.startHour = ${config.maintenance.backup.startHour}`,
+            `maintenance.backup.startMinute = ${config.maintenance.backup.startMinute}`,
+            `maintenance.backup.durationMinutes = ${config.maintenance.backup.durationMinutes}`,
         ].join("\n") + "\n"
     );
 }
@@ -206,6 +246,24 @@ function readConfigFile(): SchedulerConfig {
             maxPack: field("idleServer.maxPack", DEFAULT_CONFIG.idleServer.maxPack),
             intervalMinutes: field("idleServer.intervalMinutes", DEFAULT_CONFIG.idleServer.intervalMinutes),
         },
+        maintenance: {
+            dbIndex: {
+                startHour: field("maintenance.dbIndex.startHour", DEFAULT_CONFIG.maintenance.dbIndex.startHour),
+                startMinute: field("maintenance.dbIndex.startMinute", DEFAULT_CONFIG.maintenance.dbIndex.startMinute),
+                durationMinutes: field(
+                    "maintenance.dbIndex.durationMinutes",
+                    DEFAULT_CONFIG.maintenance.dbIndex.durationMinutes,
+                ),
+            },
+            backup: {
+                startHour: field("maintenance.backup.startHour", DEFAULT_CONFIG.maintenance.backup.startHour),
+                startMinute: field("maintenance.backup.startMinute", DEFAULT_CONFIG.maintenance.backup.startMinute),
+                durationMinutes: field(
+                    "maintenance.backup.durationMinutes",
+                    DEFAULT_CONFIG.maintenance.backup.durationMinutes,
+                ),
+            },
+        },
     };
 }
 
@@ -213,11 +271,14 @@ export function getSchedulerConfig(): SchedulerConfig {
     return readConfigFile();
 }
 
+type MaintenanceWindowPatch = Partial<Record<"startHour" | "startMinute" | "durationMinutes", unknown>>;
+
 export interface SchedulerConfigPatch {
     maxPack?: unknown;
     weekend?: Partial<Record<"startDay" | "startHour" | "endDay" | "endHour", unknown>>;
     week?: Partial<Record<"startHour" | "endHour", unknown>>;
     idleServer?: Partial<Record<"activated" | "maxPack" | "intervalMinutes", unknown>>;
+    maintenance?: Partial<Record<"dbIndex" | "backup", MaintenanceWindowPatch>>;
 }
 
 /** Applies a partial update to whichever of the config sections/fields are present, validating each field, and persists the result to scheduler-config.txt. */
@@ -228,6 +289,10 @@ export function updateSchedulerConfig(patch: SchedulerConfigPatch): SchedulerCon
         weekend: { ...current.weekend },
         week: { ...current.week },
         idleServer: { ...current.idleServer },
+        maintenance: {
+            dbIndex: { ...current.maintenance.dbIndex },
+            backup: { ...current.maintenance.backup },
+        },
     };
 
     if (patch.maxPack !== undefined) {
@@ -262,6 +327,24 @@ export function updateSchedulerConfig(patch: SchedulerConfigPatch): SchedulerCon
         if (intervalMinutes !== undefined) {
             next.idleServer.intervalMinutes = parsePositiveInt(intervalMinutes, "idleServer.intervalMinutes");
         }
+    }
+
+    if (patch.maintenance) {
+        const applyWindow = (
+            target: MaintenanceWindow,
+            windowPatch: MaintenanceWindowPatch | undefined,
+            name: string,
+        ): void => {
+            if (!windowPatch) return;
+            const { startHour, startMinute, durationMinutes } = windowPatch;
+            if (startHour !== undefined) target.startHour = parseHour(startHour, `maintenance.${name}.startHour`);
+            if (startMinute !== undefined)
+                target.startMinute = parseMinute(startMinute, `maintenance.${name}.startMinute`);
+            if (durationMinutes !== undefined)
+                target.durationMinutes = parsePositiveInt(durationMinutes, `maintenance.${name}.durationMinutes`);
+        };
+        applyWindow(next.maintenance.dbIndex, patch.maintenance.dbIndex, "dbIndex");
+        applyWindow(next.maintenance.backup, patch.maintenance.backup, "backup");
     }
 
     writeConfigFile(next);

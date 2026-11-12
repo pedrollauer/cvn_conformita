@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { getSchedulerConfig, runSchedulerNow, updateSchedulerConfig } from "../api";
-import type { IdleServerConfig, SchedulerConfig, WeekConfig, WeekendConfig } from "../types";
+import type {
+    IdleServerConfig,
+    MaintenanceWindow,
+    SchedulerConfig,
+    SchedulerConfigPatch,
+    WeekConfig,
+    WeekendConfig,
+} from "../types";
 import "./SchedulerPane.css";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -11,6 +18,19 @@ function HourInput({ value, onChange }: { value: number; onChange: (value: numbe
             type="number"
             min={0}
             max={23}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="scheduler-hour-input"
+        />
+    );
+}
+
+function MinuteInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+    return (
+        <input
+            type="number"
+            min={0}
+            max={59}
             value={value}
             onChange={(e) => onChange(Number(e.target.value))}
             className="scheduler-hour-input"
@@ -41,7 +61,7 @@ export function SchedulerPane() {
             .catch((err) => setStatus(`Failed to load config: ${err instanceof Error ? err.message : String(err)}`));
     }, []);
 
-    async function save(patch: Partial<SchedulerConfig>, label: string) {
+    async function save(patch: SchedulerConfigPatch, label: string) {
         try {
             const updated = await updateSchedulerConfig(patch);
             setConfig(updated);
@@ -73,7 +93,7 @@ export function SchedulerPane() {
         );
     }
 
-    const { maxPack, weekend, week, idleServer } = config;
+    const { maxPack, weekend, week, idleServer, maintenance } = config;
 
     function setMaxPack(value: number) {
         setConfig((current) => (current ? { ...current, maxPack: value } : current));
@@ -89,6 +109,20 @@ export function SchedulerPane() {
 
     function setIdleServer(patch: Partial<IdleServerConfig>) {
         setConfig((current) => (current ? { ...current, idleServer: { ...current.idleServer, ...patch } } : current));
+    }
+
+    function setMaintenanceWindow(name: "dbIndex" | "backup", patch: Partial<MaintenanceWindow>) {
+        setConfig((current) =>
+            current
+                ? {
+                      ...current,
+                      maintenance: {
+                          ...current.maintenance,
+                          [name]: { ...current.maintenance[name], ...patch },
+                      },
+                  }
+                : current,
+        );
     }
 
     return (
@@ -206,6 +240,82 @@ export function SchedulerPane() {
                             disabled={runningNow}
                         >
                             {runningNow ? "Starting…" : "Update now"}
+                        </button>
+                    </div>
+                </section>
+
+                <section className="scheduler-card">
+                    <h3>DB index maintenance</h3>
+                    <p className="scheduler-card-note">Update cycle pauses during this window.</p>
+                    <div className="scheduler-fields">
+                        <label className="scheduler-field">
+                            <span>Start hour</span>
+                            <HourInput
+                                value={maintenance.dbIndex.startHour}
+                                onChange={(startHour) => setMaintenanceWindow("dbIndex", { startHour })}
+                            />
+                        </label>
+                        <label className="scheduler-field">
+                            <span>Start minute</span>
+                            <MinuteInput
+                                value={maintenance.dbIndex.startMinute}
+                                onChange={(startMinute) => setMaintenanceWindow("dbIndex", { startMinute })}
+                            />
+                        </label>
+                        <label className="scheduler-field">
+                            <span>Duration (min)</span>
+                            <input
+                                type="number"
+                                min={1}
+                                value={maintenance.dbIndex.durationMinutes}
+                                onChange={(e) =>
+                                    setMaintenanceWindow("dbIndex", { durationMinutes: Number(e.target.value) })
+                                }
+                                className="scheduler-hour-input"
+                            />
+                        </label>
+                    </div>
+                    <div className="scheduler-card-actions">
+                        <button type="button" onClick={() => save({ maintenance: { dbIndex: maintenance.dbIndex } }, "DB index window")}>
+                            Save
+                        </button>
+                    </div>
+                </section>
+
+                <section className="scheduler-card">
+                    <h3>DB backup maintenance</h3>
+                    <p className="scheduler-card-note">Update cycle pauses during this window.</p>
+                    <div className="scheduler-fields">
+                        <label className="scheduler-field">
+                            <span>Start hour</span>
+                            <HourInput
+                                value={maintenance.backup.startHour}
+                                onChange={(startHour) => setMaintenanceWindow("backup", { startHour })}
+                            />
+                        </label>
+                        <label className="scheduler-field">
+                            <span>Start minute</span>
+                            <MinuteInput
+                                value={maintenance.backup.startMinute}
+                                onChange={(startMinute) => setMaintenanceWindow("backup", { startMinute })}
+                            />
+                        </label>
+                        <label className="scheduler-field">
+                            <span>Duration (min)</span>
+                            <input
+                                type="number"
+                                min={1}
+                                value={maintenance.backup.durationMinutes}
+                                onChange={(e) =>
+                                    setMaintenanceWindow("backup", { durationMinutes: Number(e.target.value) })
+                                }
+                                className="scheduler-hour-input"
+                            />
+                        </label>
+                    </div>
+                    <div className="scheduler-card-actions">
+                        <button type="button" onClick={() => save({ maintenance: { backup: maintenance.backup } }, "DB backup window")}>
+                            Save
                         </button>
                     </div>
                 </section>

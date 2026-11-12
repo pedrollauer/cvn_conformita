@@ -1,0 +1,91 @@
+.family-matrix-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.family-matrix-filter-input {
+    width: 12rem;
+    max-width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.family-matrix-filter-input:focus-visible {
+    outline: 2px solid var(--series-1);
+    outline-offset: 1px;
+}
+
+.family-matrix-filter-clear {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--page-plane);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.family-matrix-filter-clear:hover {
+    color: var(--text-primary);
+}
+
+.family-matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+    gap: 0.5rem;
+    /* Taller than before so this pane's column roughly matches the scheduler column's height;
+       clamped so it still shrinks on short viewports instead of overflowing the page. */
+    max-height: clamp(320px, 42vh, 520px);
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.family-matrix-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0.5rem 0.3rem;
+    border: 1px solid var(--border);
+    border-top-width: 3px;
+    border-radius: 8px;
+    background: var(--page-plane);
+    font: inherit;
+    cursor: pointer;
+}
+
+.family-matrix-tile:hover {
+    background: var(--surface-1);
+    border-color: var(--baseline);
+}
+
+.family-matrix-tile:focus-visible {
+    outline: 2px solid var(--series-1);
+    outline-offset: 1px;
+}
+
+.family-matrix-tile-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.family-matrix-tile-count {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.family-matrix-empty {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}

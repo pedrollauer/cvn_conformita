@@ -32,7 +32,24 @@ function isInWeekWindow(now, week) {
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     return isInWindow(nowMinutes, week.startHour * 60, week.endHour * 60);
 }
+/** True during a daily maintenance blackout (same clock time every day) - `durationMinutes` is
+ * wrapped mod 24h so a window starting late in the day still lands correctly past midnight. */
+function isInMaintenanceWindow(now, window) {
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = window.startHour * 60 + window.startMinute;
+    const endMinutes = (startMinutes + window.durationMinutes) % (24 * 60);
+    return isInWindow(nowMinutes, startMinutes, endMinutes);
+}
+function isInAnyMaintenanceWindow(now, maintenance) {
+    return isInMaintenanceWindow(now, maintenance.dbIndex) || isInMaintenanceWindow(now, maintenance.backup);
+}
+/** The update cycle never starts new work during a DB maintenance blackout (index rebuild /
+ * backup - see schedulerConfig.ts's MaintenanceConfig), even if it's otherwise inside a
+ * scheduled week/weekend window. */
 function isReadyToWork(now, config) {
+    if (isInAnyMaintenanceWindow(now, config.maintenance)) {
+        return false;
+    }
     return isInWeekendWindow(now, config.weekend) || isInWeekWindow(now, config.week);
 }
 /** Minutes from `now` until isReadyToWork() next becomes true (0 if already true). */
@@ -93,6 +110,13 @@ function logStatusChange(message) {
 async function tick() {
     const config = (0, schedulerConfig_1.getSchedulerConfig)();
     const now = new Date();
+    // Checked first and returned early so the idle-server branch below doesn't start anything
+    // either - a maintenance blackout should pause the update cycle outright, not just skip the
+    // scheduled-window path.
+    if (isInAnyMaintenanceWindow(now, config.maintenance)) {
+        logStatusChange("[scheduler] paused - DB maintenance window (index/backup) in progress");
+        return;
+    }
     if (isReadyToWork(now, config)) {
         logStatusChange("[scheduler] inside a scheduled window");
         if (!(0, jobScheduler_1.isRunning)(SCRIPT_ID)) {

@@ -120,7 +120,7 @@ public class Update
                 int missing = this.checkFile();
 
                 //If there is nothing missing, there is nothing to fix
-                if(missing == numberOfChecks)
+                if(missing == 0)
                 {
                     candidate.update = 1;
                 if (obj.file.IsLocked)
@@ -131,7 +131,7 @@ public class Update
                 }
             else
             {
-                candidate.update = 1;
+                candidate.update = 0;
                 //If there is something to fix we need to make sure that we can check it out
 
                 if(obj.file.CurrentState.Name == "Approvato")
@@ -157,16 +157,19 @@ public class Update
         public int findState(DB.update_flow candidate)
         {
 
+            if (candidate.update == 1)
+                return 3;
+
             if (candidate.review == 0)
                 return 0;
 
-            if (candidate.checkout == 1)
+            if (candidate.checkout == 0)
                 return 1;
 
-            if (candidate.update == 1)
+            if (candidate.update == 0)
                 return 2;
-
-            if (candidate.approve == 1)
+            
+            if (candidate.checkin== 0)
                 return 3;
 
             return 0;
@@ -207,11 +210,11 @@ public class Update
                 {
                     update = exists[0];
                     update.path = path;
-                    update = checkStates(update, obj);
                 }
 
                 string ext = Path.GetExtension(update.path).ToUpper();
 
+                update = checkStates(update, obj);
                 if (!ext.Contains(".SLD"))
                 {
                     update.review = 1; update.checkout = 1; update.update = 1; update.checkin = 1; update.approve = 1;
@@ -281,7 +284,7 @@ public class Update
                                 bool result = sw.Conform(update.path);
                                 int check = checkFile();
 
-                                if (result && check == numberOfChecks)
+                                if (result && check == 0)
                                 {
                                     update.update = 1;
                                     sql.conn.Update(update);
@@ -309,6 +312,10 @@ public class Update
                                         currentState = 2;
                                         attempt++;
                                     }
+                                }else if(update.update == 1 && !obj.file.IsLocked)
+                                {
+                                    update.checkin = 1;
+                                    currentState++;
                                 }
                                 break;
                             default:

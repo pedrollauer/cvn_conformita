@@ -19,11 +19,38 @@ export interface IdleServerConfig {
     intervalMinutes: number;
 }
 
+// A daily blackout window (same clock time every day) during which the update cycle won't start
+// new work - e.g. a DB index rebuild or backup job.
+export interface MaintenanceWindow {
+    startHour: number;
+    startMinute: number;
+    durationMinutes: number;
+}
+
+export interface MaintenanceConfig {
+    dbIndex: MaintenanceWindow;
+    backup: MaintenanceWindow;
+}
+
 export interface SchedulerConfig {
     maxPack: number;
     weekend: WeekendConfig;
     week: WeekConfig;
     idleServer: IdleServerConfig;
+    maintenance: MaintenanceConfig;
+}
+
+// Mirrors backend/schedulerConfig.ts's SchedulerConfigPatch - each section/field is independently
+// optional, unlike Partial<SchedulerConfig> which only makes the top-level keys optional.
+export interface SchedulerConfigPatch {
+    maxPack?: number;
+    weekend?: Partial<WeekendConfig>;
+    week?: Partial<WeekConfig>;
+    idleServer?: Partial<IdleServerConfig>;
+    maintenance?: {
+        dbIndex?: Partial<MaintenanceWindow>;
+        backup?: Partial<MaintenanceWindow>;
+    };
 }
 
 export interface QueueJob {
@@ -66,6 +93,14 @@ export interface ErrorCount {
     label: string;
     count: number;
     weight: number | null;
+}
+
+// A product family (the first four numeric digits of a part's code/filename, or "Other" for a
+// code that doesn't start with 4 digits) and how many of its files are still outstanding - in
+// `todo` (has an active error) and not yet in `done`.
+export interface FamilyCount {
+    family: string;
+    count: number;
 }
 
 export interface OccurrenceRange {

@@ -1,5 +1,6 @@
 import type {
     SchedulerConfig,
+    SchedulerConfigPatch,
     QueueJob,
     QueueSkipResult,
     QueueFamilyResult,
@@ -33,7 +34,7 @@ export function getSchedulerConfig(): Promise<SchedulerConfig> {
     return request<SchedulerConfig>("/scheduler/config");
 }
 
-export function updateSchedulerConfig(patch: Partial<SchedulerConfig>): Promise<SchedulerConfig> {
+export function updateSchedulerConfig(patch: SchedulerConfigPatch): Promise<SchedulerConfig> {
     return request<SchedulerConfig>("/scheduler/config", {
         method: "POST",
         body: JSON.stringify(patch),
@@ -106,4 +107,11 @@ export function getSchedulerStatus(): Promise<SchedulerStatus> {
 /** Snapshot of the PDM Operations tab queue (tasks queued or actively running). */
 export function getRunningPdmTasks(): Promise<RunningTask[]> {
     return request<RunningTask[]>("/pdm/running-tasks");
+}
+
+/** Full backlog (up to the last 1000 lines) of everything logged via console.log/console.error
+ * on the backend - polled by the /console page rather than streamed, see app.ts's comment on
+ * this route for why. */
+export function getConsoleSnapshot(): Promise<{ lines: string[] }> {
+    return request<{ lines: string[] }>("/console/snapshot");
 }

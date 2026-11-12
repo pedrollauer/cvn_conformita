@@ -1,4 +1,4 @@
-import { getSchedulerConfig, SchedulerConfig, WeekendConfig, WeekConfig } from "./schedulerConfig";
+import { getSchedulerConfig, SchedulerConfig, WeekendConfig, WeekConfig, MaintenanceConfig, MaintenanceWindow } from "./schedulerConfig";
 import { runScript, isRunning } from "./jobScheduler";
 import { PdmSql } from "./interface/pdm_sql";
 
@@ -34,7 +34,26 @@ function isInWeekWindow(now: Date, week: WeekConfig): boolean {
     return isInWindow(nowMinutes, week.startHour * 60, week.endHour * 60);
 }
 
+/** True during a daily maintenance blackout (same clock time every day) - `durationMinutes` is
+ * wrapped mod 24h so a window starting late in the day still lands correctly past midnight. */
+function isInMaintenanceWindow(now: Date, window: MaintenanceWindow): boolean {
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = window.startHour * 60 + window.startMinute;
+    const endMinutes = (startMinutes + window.durationMinutes) % (24 * 60);
+    return isInWindow(nowMinutes, startMinutes, endMinutes);
+}
+
+function isInAnyMaintenanceWindow(now: Date, maintenance: MaintenanceConfig): boolean {
+    return isInMaintenanceWindow(now, maintenance.dbIndex) || isInMaintenanceWindow(now, maintenance.backup);
+}
+
+/** The update cycle never starts new work during a DB maintenance blackout (index rebuild /
+ * backup - see schedulerConfig.ts's MaintenanceConfig), even if it's otherwise inside a
+ * scheduled week/weekend window. */
 function isReadyToWork(now: Date, config: SchedulerConfig): boolean {
+    if (isInAnyMaintenanceWindow(now, config.maintenance)) {
+        return false;
+    }
     return isInWeekendWindow(now, config.weekend) || isInWeekWindow(now, config.week);
 }
 
@@ -111,6 +130,14 @@ function logStatusChange(message: string): void {
 async function tick(): Promise<void> {
     const config = getSchedulerConfig();
     const now = new Date();
+
+    // Checked first and returned early so the idle-server branch below doesn't start anything
+    // either - a maintenance blackout should pause the update cycle outright, not just skip the
+    // scheduled-window path.
+    if (isInAnyMaintenanceWindow(now, config.maintenance)) {
+        logStatusChange("[scheduler] paused - DB maintenance window (index/backup) in progress");
+        return;
+    }
 
     if (isReadyToWork(now, config)) {
         logStatusChange("[scheduler] inside a scheduled window");

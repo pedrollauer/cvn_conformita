@@ -1,0 +1,70 @@
+.family-files-view {
+    min-height: 100vh;
+}
+
+.family-files-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1.25rem 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.family-files-back {
+    align-self: flex-start;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.family-files-back:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+
+.family-files-caption {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.family-files-grid {
+    height: 70vh;
+    min-height: 400px;
+}
+
+.family-files-queue-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 100%;
+}
+
+.family-files-queue-button {
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--series-1);
+    color: #ffffff;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.family-files-queue-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.family-files-queue-note {
+    font-size: 0.72rem;
+    color: var(--status-critical);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.family-files-queued-note {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}

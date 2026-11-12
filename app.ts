@@ -1,3 +1,6 @@
+// Imported first so nothing logged during the rest of this file's module-load (or anything that
+// runs on require.main like script1.ts, if that's ever imported) is missed by the ring buffer.
+import { getConsoleBacklog, subscribeConsole } from "./consoleLog";
 import path from "node:path";
 import fs from "node:fs";
 import express from "express";
@@ -22,8 +25,10 @@ const FRONTEND_DIST = path.join(__dirname, "frontend/dist");
 const app = express();
 // /api/parts/dataset ships the whole todo/done table as one JSON response (tens of MB
 // uncompressed) so the frontend can filter it locally instead of re-querying per slider tick -
-// gzip cuts that down a lot since it's mostly small repeated integers.
-app.use(compression());
+// gzip cuts that down a lot since it's mostly small repeated integers. /api/console/stream is
+// excluded - compression buffers output looking for data worth compressing, which defeats an
+// SSE stream that needs each line flushed to the client as soon as it's written.
+app.use(compression({ filter: (req, res) => req.path !== "/api/console/stream" && compression.filter(req, res) }));
 app.use(express.json());
 
 const api = express.Router();
@@ -270,6 +275,51 @@ api.get("/activity/done-total", (_req, res) => {
     }
 });
 
+// Live tail of everything logged via console.log/console.error (see consoleLog.ts) - the
+// backing store for the /console page's "script console as it's running" view. Sends the
+// existing backlog immediately, then streams new lines as they're logged for as long as the
+// client stays connected.
+api.get("/console/stream", (req, res) => {
+    res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+    });
+
+    // send() is called from subscribeConsole's listener - an event-emitter callback, not a
+    // middleware Express can catch exceptions from. Writing to a socket the client has already
+    // torn down throws there, which previously went uncaught and crashed the whole process.
+    const send = (line: string): void => {
+        if (res.writableEnded || res.destroyed) {
+            return;
+        }
+        try {
+            res.write(`data: ${JSON.stringify(line)}\n\n`);
+        } catch (err) {
+            console.error("[console/stream] write failed, dropping subscriber:", err);
+            unsubscribe();
+        }
+    };
+
+    // Subscribed before replaying the backlog - send() can call unsubscribe() on a failed
+    // write, so unsubscribe must already be assigned before send's first call below.
+    const unsubscribe = subscribeConsole(send);
+    req.on("close", unsubscribe);
+
+    for (const line of getConsoleBacklog()) {
+        send(line);
+    }
+});
+
+// Plain polling fallback for the same backlog - the /console page uses this instead of the SSE
+// stream above. A simple finite JSON response sidesteps whatever in this environment (proxy,
+// browser, or devtools instrumentation attached to it) was leaving the long-lived SSE connection
+// stuck in a perpetual "connecting" state despite the stream itself working fine for any plain
+// HTTP client that isn't a browser tab under active automation/inspection.
+api.get("/console/snapshot", (_req, res) => {
+    res.json({ lines: getConsoleBacklog() });
+});
+
 app.use("/api", api);
 
 if (fs.existsSync(FRONTEND_DIST)) {
@@ -283,6 +333,18 @@ if (fs.existsSync(FRONTEND_DIST)) {
         res.send("conformita backend running (frontend not built — run `npm run build` in frontend/)");
     });
 }
+
+// Logs any route exception (captured by consoleLog.ts too, so it shows up in /console) instead
+// of letting it disappear into Express's default handler - that's what made the /console
+// route's own bug hard to diagnose from outside the server process.
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error(`[app] unhandled error on ${req.method} ${req.originalUrl}:`, err);
+    if (!res.headersSent) {
+        res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    } else {
+        res.end();
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`conformita backend listening on port ${PORT}`);
