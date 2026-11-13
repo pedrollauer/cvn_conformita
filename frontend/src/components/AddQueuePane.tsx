@@ -27,7 +27,14 @@ function parseCsv(text: string): Array<{ code: string; path: string }> {
     return rows;
 }
 
-export function AddQueuePane() {
+interface AddQueuePaneProps {
+    // The dashboard's currently-selected HV range (see PartsView's HvSlider) - "Add family"
+    // restricts its glob match to files whose HV project link falls inside it, so it queues only
+    // what's currently in view rather than every approved file matching the pattern.
+    hvRange?: [number, number];
+}
+
+export function AddQueuePane({ hvRange }: AddQueuePaneProps) {
     const [mode, setMode] = useState<Mode>("search");
     const [queue, setQueue] = useState<QueueJob[]>([]);
     const [searchCode, setSearchCode] = useState("");
@@ -96,10 +103,11 @@ export function AddQueuePane() {
         setBusy(true);
         setStatus(null);
         try {
-            const result = await addFamilyToQueue(familyPattern.trim());
+            const result = await addFamilyToQueue(familyPattern.trim(), hvRange);
             setFamilyPattern("");
             const skipNote = result.skippedCount > 0 ? `, ${result.skippedCount} already processed (skipped)` : "";
-            setStatus(`Queued ${result.queued.length} approved CAD file(s) matching "${familyPattern.trim()}"${skipNote}.`);
+            const rangeNote = hvRange ? ` within HV${hvRange[0]}-HV${hvRange[1]}` : "";
+            setStatus(`Queued ${result.queued.length} approved CAD file(s) matching "${familyPattern.trim()}"${rangeNote}${skipNote}.`);
             refresh();
         } catch (err) {
             setStatus(`Failed to add: ${err instanceof Error ? err.message : String(err)}`);
@@ -202,6 +210,11 @@ export function AddQueuePane() {
                             placeholder="e.g. 22*"
                         />
                     </label>
+                    {hvRange && (
+                        <p className="add-queue-range-note">
+                            Restricted to HV{hvRange[0]}-HV{hvRange[1]} (the dashboard's current HV range)
+                        </p>
+                    )}
                     <button type="submit" disabled={busy}>
                         Add family
                     </button>

@@ -72,11 +72,13 @@ export function addToQueueByCode(code: string): Promise<QueueJob | QueueSkipResu
 }
 
 /** Queues every approved file under \CAD\ whose filename matches `pattern` (glob, e.g. "22*") -
- * minus any already fully processed and approved (reported in skippedCount). */
-export function addFamilyToQueue(pattern: string): Promise<QueueFamilyResult> {
+ * minus any already fully processed and approved (reported in skippedCount). `hvRange`, when
+ * given, further restricts the match to files with an HV project link inside that range - the
+ * same range the dashboard's HV slider is currently set to. */
+export function addFamilyToQueue(pattern: string, hvRange?: [number, number]): Promise<QueueFamilyResult> {
     return request<QueueFamilyResult>("/queue/by-pattern", {
         method: "POST",
-        body: JSON.stringify({ pattern }),
+        body: JSON.stringify(hvRange ? { pattern, hvFrom: hvRange[0], hvTo: hvRange[1] } : { pattern }),
     });
 }
 

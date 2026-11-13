@@ -212,7 +212,7 @@ export function PartsView() {
                     <BarChartPane errors={errors} loading={!dataset} />
                 </div>
                 <div className="parts-view-column parts-view-column-side" ref={sideColumnRef}>
-                    <AddQueuePane />
+                    <AddQueuePane hvRange={hvRange ?? undefined} />
                     <LiveStatusPane />
                     <SchedulerPane />
                 </div>

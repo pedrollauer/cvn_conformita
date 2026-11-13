@@ -171,14 +171,19 @@ api.post("/queue/from-code", async (req, res) => {
 });
 
 // "Add family": `pattern` is a glob (e.g. "22*"); queues every file under the vault's \CAD\
-// folder whose filename matches it and whose current PDM status is "Approvato".
+// folder whose filename matches it and whose current PDM status is "Approvato". `hvFrom`/`hvTo`
+// are optional - when given, the match is further restricted to files with an HV project link
+// (from code_project, the same data the dashboard's HV slider filters by) inside that range,
+// so "Add family" queues only what's currently in view on the dashboard rather than every
+// approved file PDM finds for the pattern.
 api.post("/queue/by-pattern", async (req, res) => {
-    const { pattern } = req.body ?? {};
+    const { pattern, hvFrom, hvTo } = req.body ?? {};
     if (typeof pattern !== "string" || !pattern.trim()) {
         res.status(400).json({ error: "pattern is required" });
         return;
     }
     const trimmedPattern = pattern.trim();
+    const hasRange = typeof hvFrom === "number" && typeof hvTo === "number";
 
     const pdm = new PdmSql();
     let files;
@@ -191,8 +196,23 @@ api.post("/queue/by-pattern", async (req, res) => {
         await pdm.close();
     }
 
+    if (hasRange) {
+        const journey = new JourneySql();
+        let inRange: Set<string>;
+        try {
+            inRange = journey.getCodesWithProjectInRange(hvFrom, hvTo);
+        } finally {
+            journey.close();
+        }
+        files = files.filter((file) => inRange.has(file.filename.toUpperCase()));
+    }
+
     if (files.length === 0) {
-        res.status(404).json({ error: `No approved CAD files matched "${trimmedPattern}"` });
+        res.status(404).json({
+            error: hasRange
+                ? `No approved CAD files matched "${trimmedPattern}" within HV${hvFrom}-HV${hvTo}`
+                : `No approved CAD files matched "${trimmedPattern}"`,
+        });
         return;
     }
 

@@ -48,6 +48,13 @@ export declare class JourneySql {
      * excluded from the bounds.
      */
     getProjectRange(): ProjectRange;
+    /**
+     * All codes (uppercased) with at least one project number inside [from, to] - used by "Add
+     * family" to restrict a PDM glob match down to the currently-selected HV range. Queried from
+     * the proj_num side (idx_code_project_projnum) rather than an IN-list of PDM filenames, since
+     * that list can be large and SQLite caps bound-parameter counts.
+     */
+    getCodesWithProjectInRange(from: number, to: number): Set<string>;
     close(): void;
 }
 //# sourceMappingURL=journey_sql.d.ts.map

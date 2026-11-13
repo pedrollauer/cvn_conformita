@@ -81,6 +81,18 @@ class JourneySql {
             .get();
         return { min: row.lo ?? 0, max: row.hi ?? 0 };
     }
+    /**
+     * All codes (uppercased) with at least one project number inside [from, to] - used by "Add
+     * family" to restrict a PDM glob match down to the currently-selected HV range. Queried from
+     * the proj_num side (idx_code_project_projnum) rather than an IN-list of PDM filenames, since
+     * that list can be large and SQLite caps bound-parameter counts.
+     */
+    getCodesWithProjectInRange(from, to) {
+        const rows = this.db
+            .prepare("SELECT DISTINCT code FROM code_project WHERE proj_num BETWEEN ? AND ?")
+            .all(from, to);
+        return new Set(rows.map((row) => row.code.toUpperCase()));
+    }
     close() {
         this.db.close();
     }

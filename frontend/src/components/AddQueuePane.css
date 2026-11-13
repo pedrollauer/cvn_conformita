@@ -85,6 +85,13 @@
     cursor: default;
 }
 
+.add-queue-range-note {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
 .add-queue-status {
     margin: 0;
     font-size: 0.8rem;
