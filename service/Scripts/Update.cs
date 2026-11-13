@@ -175,6 +175,12 @@ public class Update
             return 0;
         }
 
+        public void RemoveFileQueue(DB.update_flow up)
+        {
+            DB.queue q = new DB.queue();
+            this.sql.conn.Delete(up);
+            this.sql.conn.Delete(q);
+        }
         public void Begin()
         {
             Console.WriteLine("=============== UPDATE ===============");
@@ -212,6 +218,13 @@ public class Update
                     update.path = path;
                 }
 
+                if (obj.file.CurrentState.Name == "Obsoleto")
+                {
+
+                    RemoveFileQueue(update);
+                    return;
+                }
+
                 string ext = Path.GetExtension(update.path).ToUpper();
 
                 update = checkStates(update, obj);
@@ -221,8 +234,10 @@ public class Update
                     return;
                 }
 
+                //FOR NOW NO SLDDRW
                 if (ext.Contains(".SLDDRW") && !updateDrawings)
                 {
+                    RemoveFileQueue(update);
                     return;
                 }
 
@@ -240,7 +255,7 @@ public class Update
                     try
                     {
                         obj = new PDMObject(path, pdm);
-
+                        
                         switch (currentState)
                         {
                             case 0:
@@ -304,19 +319,16 @@ public class Update
                                         sql.conn.Update(update);
                                         currentState++;
                                     }
-                                    else if (chin == 0)
+                                    else if(chin != 1)
                                     {
-                                        Console.WriteLine("Unable to checkin. Falling back.");
-                                        update.checkin = 0;
-                                        update.update = 0;
-                                        currentState = 2;
-                                        attempt++;
-                                    }else if(chin ==2)
-                                    {
-                                        update.checkin = 1;
+                                        // SMT IS WRONG I CANT CHECK IN
+                                        update.checkin = 1; 
                                         sql.conn.Update(update);
+                                        pdm.CancelCheckout(obj);
                                         currentState++;
-                                        DB.external_ref reff = new DB.external_ref {code = update.code, error_code = -2147220973 };
+                                        string errorDesc = null;
+                                        pdm.vault.GetErrorString(chin,out errorDesc, out _);
+                                        DB.external_ref reff = new DB.external_ref {code = update.code, error_code = chin, error_desc=errorDesc };
                                         sql.conn.Insert(reff);
 
                                     }

@@ -1,5 +1,7 @@
 using EPDM.Interop.epdm;
+using EPDM.Interop.EPDMResultCode;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
 namespace Interface
@@ -734,9 +736,28 @@ namespace Interface
             }
         }
 
-        // 1 = OK
-        // 0 = FALSE
-        // 2 = INTERROMPERE REFERIMENTO
+        public void CancelCheckout(PDMObject obj, bool keepLocalChanges = false)
+        {
+
+            if (obj.file == null)
+                throw new ArgumentException("File not found in vault.");
+
+            if (!obj.file.IsLocked)
+                return; // File is not checked out
+
+            try
+            {
+                obj.file.UndoLockFile(0, keepLocalChanges);
+            }
+            catch (COMException ex)
+            {
+                string errorName;
+                string errorDesc;
+                vault.GetErrorString(ex.ErrorCode, out errorName, out errorDesc);
+                Console.WriteLine($"Undo checkout failed: {errorName} (0x{ex.ErrorCode:X8}) - {errorDesc}");
+            }
+        }
+
         public int checkinFile(PDMObject obj, string comment = "Checked in via API")
         {
             try
@@ -755,7 +776,9 @@ namespace Interface
                         return 1;
 
                     }
+                    else
                     {
+                        Console.WriteLine("The file is already in checkin");
                         return 1;
                     }
                 }
@@ -764,12 +787,8 @@ namespace Interface
             {
                 sql.conn.Insert(new DB.update_log{code = obj.file.Name, status="ERROR CHECKIN", timestamp=DateTimeOffset.UtcNow.ToUnixTimeSeconds()});
                 Console.WriteLine("PDM Error: " + ex.ErrorCode + " - " + ex.Message);
-                if(ex.ErrorCode == -2147220973)
-                {
-                    return 2;
-                }
 
-                return 0;
+                return ex.ErrorCode;
             }
 
             return 0;

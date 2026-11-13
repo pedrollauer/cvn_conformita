@@ -12,6 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="EPDM.Interop.EPDMResultCode">
+      <HintPath>lib\EPDM.Interop.EPDMResultCode.dll</HintPath>
+    </Reference>
     <Reference Include="EPDM.Interop.epdm">
       <HintPath>lib\EPDM.Interop.epdm.dll</HintPath>
     </Reference>

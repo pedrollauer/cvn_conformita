@@ -11,6 +11,7 @@ namespace DB
         public int id { get; set; }
         public string code { get; set; }
         public long error_code { get; set; }
+        public string error_desc { get; set; }
         
 
     }

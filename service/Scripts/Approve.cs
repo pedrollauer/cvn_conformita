@@ -97,6 +97,7 @@ namespace Scripts
             if (files.Count == 0)
                 return;
 
+            // SHOULDNT I CHECK IF THEY REALLY NEED APPROVAL FIRST?
             while(done < howMany || attempt < retry || done < files.Count)
             {
                 this.ApproveBatch(files);

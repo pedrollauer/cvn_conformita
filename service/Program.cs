@@ -178,6 +178,9 @@ static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int
 
     foreach (DB.update_flow file in pending)
     {
+        if (file.checkin == 1)
+            continue;
+
         ProcessFile(sw, pdm, sql, file.path);
     }
 
