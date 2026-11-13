@@ -296,21 +296,29 @@ public class Update
                                 if (update.checkout == 1 && update.checkin != 1 && obj.file.IsLocked)
                                 {
                                     Console.WriteLine("STEP 3");
-                                    bool chin = pdm.checkinFile(obj);
+                                    int chin = pdm.checkinFile(obj);
                                     Console.WriteLine("chin " + chin);
-                                    if (chin)
+                                    if (chin == 1)
                                     {
                                         update.checkin = 1;
                                         sql.conn.Update(update);
                                         currentState++;
                                     }
-                                    else
+                                    else if (chin == 0)
                                     {
                                         Console.WriteLine("Unable to checkin. Falling back.");
                                         update.checkin = 0;
                                         update.update = 0;
                                         currentState = 2;
                                         attempt++;
+                                    }else if(chin ==2)
+                                    {
+                                        update.checkin = 1;
+                                        sql.conn.Update(update);
+                                        currentState++;
+                                        DB.external_ref reff = new DB.external_ref {code = update.code, error_code = -2147220973 };
+                                        sql.conn.Insert(reff);
+
                                     }
                                 }else if(update.update == 1 && !obj.file.IsLocked)
                                 {

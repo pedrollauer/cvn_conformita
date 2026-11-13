@@ -13,7 +13,10 @@ const DB_PATH = "C:\\db\\conformita.db";
 class UpdateFlowSql {
     db;
     constructor() {
-        this.db = new node_sqlite_1.DatabaseSync(DB_PATH, { readOnly: true });
+        // timeout = SQLite's busy_timeout: C:\db\conformita.db is shared with the .NET PDM
+        // service, so a write from that side can transiently lock it - wait up to 5s for the
+        // lock to clear instead of throwing "database is locked" immediately.
+        this.db = new node_sqlite_1.DatabaseSync(DB_PATH, { readOnly: true, timeout: 5000 });
     }
     /**
      * Files the service has already started working (or finished working) but hasn't approved

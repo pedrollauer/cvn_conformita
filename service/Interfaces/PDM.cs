@@ -734,7 +734,10 @@ namespace Interface
             }
         }
 
-        public bool checkinFile(PDMObject obj, string comment = "Checked in via API")
+        // 1 = OK
+        // 0 = FALSE
+        // 2 = INTERROMPERE REFERIMENTO
+        public int checkinFile(PDMObject obj, string comment = "Checked in via API")
         {
             try
             {
@@ -749,11 +752,11 @@ namespace Interface
                             sql.conn.Insert(new DB.update_log{code = obj.file.Name, status="CHECKIN", timestamp=DateTimeOffset.UtcNow.ToUnixTimeSeconds()});
                             Console.WriteLine($"File {obj.file.Name} checked in successfully.");
                         }
-                        return true;
+                        return 1;
 
                     }
                     {
-                        return true;
+                        return 1;
                     }
                 }
             }
@@ -761,9 +764,15 @@ namespace Interface
             {
                 sql.conn.Insert(new DB.update_log{code = obj.file.Name, status="ERROR CHECKIN", timestamp=DateTimeOffset.UtcNow.ToUnixTimeSeconds()});
                 Console.WriteLine("PDM Error: " + ex.ErrorCode + " - " + ex.Message);
+                if(ex.ErrorCode == -2147220973)
+                {
+                    return 2;
+                }
+
+                return 0;
             }
 
-            return false;
+            return 0;
         }
 
         public List<int> PrintAvailableTransitions(string filePath)

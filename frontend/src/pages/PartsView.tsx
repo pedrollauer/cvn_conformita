@@ -203,7 +203,12 @@ export function PartsView() {
                         )}
                         <OccurrenceFilter value={occurrences} onChange={setOccurrences} />
                     </div>
-                    <FamilyMatrixPane families={families} loading={!dataset} />
+                    <FamilyMatrixPane
+                        families={families}
+                        loading={!dataset}
+                        hvRange={hvRange ?? undefined}
+                        occurrences={occurrences}
+                    />
                     <BarChartPane errors={errors} loading={!dataset} />
                 </div>
                 <div className="parts-view-column parts-view-column-side" ref={sideColumnRef}>

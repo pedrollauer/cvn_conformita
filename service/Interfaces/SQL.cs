@@ -11,6 +11,7 @@ namespace Interface
         {
             conn.CreateTable<DB.update_flow>();
             conn.CreateTable<DB.update_log>();
+            conn.CreateTable<DB.external_ref>();
 
             conn.CreateTable<DB.done>();
         }

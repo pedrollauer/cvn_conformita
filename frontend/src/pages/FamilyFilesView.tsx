@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type ICellRendererParams } from "ag-grid-community";
 import { PageHeader } from "../components/PageHeader";
@@ -103,8 +103,19 @@ const COLUMN_DEFS: ColDef<FamilyFileRow>[] = [
 export function FamilyFilesView() {
     const { family } = useParams<{ family: string }>();
     const { dataset, queue, loadError, refreshQueue } = usePartsData();
+    const [searchParams] = useSearchParams();
 
     const queuedCodes = useMemo(() => new Set(queue.map((job) => job.code)), [queue]);
+
+    // The HV range/occurrence filter the matrix tile was computed under (see FamilyMatrixPane's
+    // navigation), carried here via query params so this list only shows the files that actually
+    // contributed to that tile's count - absent (e.g. a direct link/bookmark), no filtering is
+    // applied and every file in the family is shown, same as before.
+    const hvFrom = searchParams.has("hvFrom") ? Number(searchParams.get("hvFrom")) : null;
+    const hvTo = searchParams.has("hvTo") ? Number(searchParams.get("hvTo")) : null;
+    const occMin = searchParams.has("occMin") ? Number(searchParams.get("occMin")) : 0;
+    const occMax = searchParams.has("occMax") ? Number(searchParams.get("occMax")) : Infinity;
+    const hasRangeFilter = hvFrom !== null && hvTo !== null && Number.isFinite(hvFrom) && Number.isFinite(hvTo);
 
     const rows = useMemo<FamilyFileRow[]>(() => {
         if (!dataset || family === undefined) {
@@ -112,6 +123,14 @@ export function FamilyFilesView() {
         }
         return dataset.parts
             .filter((p) => familyOf(p.code) === family)
+            .filter((p) => {
+                if (!hasRangeFilter) return true;
+                const useCount = p.projects.length;
+                if (useCount < occMin || useCount > occMax) return false;
+                // Mirrors PartsView's inclusion test: a part counts toward the selected HV range
+                // only if at least one of its projects falls inside [hvFrom, hvTo].
+                return p.projects.some((proj) => proj >= hvFrom! && proj <= hvTo!);
+            })
             .map((p) => ({
                 code: p.code,
                 done: p.done,
@@ -124,7 +143,7 @@ export function FamilyFilesView() {
                 projectCount: p.projects.length,
                 queued: queuedCodes.has(p.code),
             }));
-    }, [dataset, family, queuedCodes]);
+    }, [dataset, family, queuedCodes, hasRangeFilter, hvFrom, hvTo, occMin, occMax]);
 
     async function handleAddToQueue(code: string): Promise<QueueSkipResult | null> {
         const result = await addToQueueByCode(code);
@@ -146,6 +165,7 @@ export function FamilyFilesView() {
                     <>
                         <p className="family-files-caption">
                             {rows.length.toLocaleString()} file{rows.length === 1 ? "" : "s"} in family {family}
+                            {hasRangeFilter && ` · HV${hvFrom}-HV${hvTo}`}
                         </p>
                         <div className="family-files-grid">
                             <AgGridReact<FamilyFileRow>
@@ -158,6 +178,13 @@ export function FamilyFilesView() {
                                 pagination
                                 paginationPageSize={100}
                                 paginationPageSizeSelector={[50, 100, 250, 500]}
+                                // Cell range selection + clipboard copy are Enterprise-only in
+                                // ag-grid (not installed here) - this is the Community equivalent:
+                                // native browser text selection across cells, copyable with the
+                                // browser's own Ctrl+C. ensureDomOrder keeps the DOM order matching
+                                // visual row/column order so a drag-selection copies in the right order.
+                                enableCellTextSelection
+                                ensureDomOrder
                             />
                         </div>
                     </>

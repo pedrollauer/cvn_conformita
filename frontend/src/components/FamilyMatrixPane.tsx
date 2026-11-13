@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { FamilyCount } from "../types";
+import type { FamilyCount, OccurrenceRange } from "../types";
 import { ChartSpinner } from "./ChartSpinner";
 import "./ChartPane.css";
 import "./FamilyMatrixPane.css";
@@ -8,6 +8,11 @@ import "./FamilyMatrixPane.css";
 interface FamilyMatrixPaneProps {
     families: FamilyCount[];
     loading?: boolean;
+    // The HV range/occurrence filter currently applied to `families` - carried along when
+    // navigating to a family's file list so that view can scope itself the same way, instead of
+    // showing every file ever tracked for the family.
+    hvRange?: [number, number];
+    occurrences?: OccurrenceRange;
 }
 
 type Tier = "done" | "good" | "warning" | "serious" | "critical";
@@ -41,9 +46,23 @@ function tierOf(indexAmongOutstanding: number, outstandingTotal: number): Tier {
     return "critical";
 }
 
-export function FamilyMatrixPane({ families, loading }: FamilyMatrixPaneProps) {
+export function FamilyMatrixPane({ families, loading, hvRange, occurrences }: FamilyMatrixPaneProps) {
     const [prefix, setPrefix] = useState("");
     const navigate = useNavigate();
+
+    function goToFamily(family: string) {
+        const params = new URLSearchParams();
+        if (hvRange) {
+            params.set("hvFrom", String(hvRange[0]));
+            params.set("hvTo", String(hvRange[1]));
+        }
+        if (occurrences) {
+            params.set("occMin", String(occurrences.min));
+            if (occurrences.max !== null) params.set("occMax", String(occurrences.max));
+        }
+        const query = params.toString();
+        navigate(`/parts-view/family/${encodeURIComponent(family)}${query ? `?${query}` : ""}`);
+    }
 
     // Tier is assigned by rank within the *full* list (before the prefix filter) so a tile's
     // color doesn't shift around as you type - typing just narrows which tiles are shown.
@@ -113,7 +132,7 @@ export function FamilyMatrixPane({ families, loading }: FamilyMatrixPaneProps) {
                                     key={r.family}
                                     style={{ borderTopColor: TIER_COLOR[r.tier] }}
                                     title={`Family ${r.family}: ${r.count.toLocaleString()} to do (${TIER_LABEL[r.tier]}) - click to view files`}
-                                    onClick={() => navigate(`/parts-view/family/${encodeURIComponent(r.family)}`)}
+                                    onClick={() => goToFamily(r.family)}
                                 >
                                     <span className="family-matrix-tile-label">{r.family}</span>
                                     <span className="family-matrix-tile-count" style={{ color: TIER_COLOR[r.tier] }}>

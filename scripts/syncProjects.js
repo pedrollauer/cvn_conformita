@@ -98,7 +98,11 @@ function lookupProjects(erpLookup, pdmCode) {
 }
 async function run() {
     const dryRun = process.argv.includes("--dry-run");
-    const db = new node_sqlite_1.DatabaseSync(DB_PATH);
+    // timeout = SQLite's busy_timeout: C:\db\conformita.db is shared with the .NET PDM service
+    // and the frontend's own request-driven connections - wait up to 10s for a lock to clear
+    // before failing (longer than the other connections' 5s since this script's own
+    // DELETE+bulk-INSERT transaction below can itself hold the write lock for a while).
+    const db = new node_sqlite_1.DatabaseSync(DB_PATH, { timeout: 10000 });
     try {
         db.exec(`
             CREATE TABLE IF NOT EXISTS code_project (

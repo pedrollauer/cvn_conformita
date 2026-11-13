@@ -11,7 +11,11 @@ const DB_PATH = "C:\\db\\conformita.db";
 class QueueSql {
     db;
     constructor() {
-        this.db = new node_sqlite_1.DatabaseSync(DB_PATH);
+        // timeout = SQLite's busy_timeout: C:\db\conformita.db is shared with the .NET PDM
+        // service, so a write from that side (or this class's own addMany transaction, from
+        // another request) can transiently lock it - wait up to 5s for the lock to clear instead
+        // of throwing "database is locked" immediately.
+        this.db = new node_sqlite_1.DatabaseSync(DB_PATH, { timeout: 5000 });
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
