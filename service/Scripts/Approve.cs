@@ -14,6 +14,7 @@ namespace Scripts
         int done = 0;
         int retry = 5;
 
+        bool weAreDone;
 
 
         public bool ApproveBatch(List<DB.update_flow> data )
@@ -90,6 +91,7 @@ namespace Scripts
                 {
                     batchChanger.ChangeState2(0, this.pdm.passWord);
                     Console.WriteLine("Batch approval completed successfully.");
+                    weAreDone = true;
                     return true;
                 }
                 else
@@ -107,6 +109,7 @@ namespace Scripts
 
         public Approve(SQL sql, PDM pdm, int howMany)
         {
+            weAreDone = false;
             this.sql = sql;
             this.pdm = pdm;
 
@@ -121,6 +124,10 @@ namespace Scripts
             {
                 this.ApproveBatch(files);
                 attempt++;
+                if (weAreDone)
+                {
+                    break;
+                }
             }
             
         }
