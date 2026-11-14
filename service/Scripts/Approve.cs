@@ -33,6 +33,25 @@ namespace Scripts
                 {
                     IEdmFile5 file = vault.GetFileFromPath(d.path, out IEdmFolder5 folder);
 
+                    //Check if the file is really checked out
+                    PDMObject obj = new PDMObject(d.path, pdm);
+                    obj.getCopy();
+
+                    if(obj.file.CurrentState.Name == "Obsoleto")
+                    {
+                        sql.conn.Delete(d);
+                        done++;
+                        continue;
+                    }
+                    if(obj.file.IsLocked)
+                    {
+                        d.checkin = 0;
+                        d.update = 0;
+
+                        sql.conn.Update(d);
+                        done++;
+                        continue;
+                    }
                     if (file != null && file.CurrentState.Name == "Modifica Senza Revisione")
                     {
                         batchChanger.AddFile(file.ID, folder.ID);

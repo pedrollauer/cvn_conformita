@@ -1,4 +1,5 @@
 using EPDM.Interop.epdm;
+using Interface;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -203,6 +204,8 @@ static void RunApprove(Interface.SQL sql, Interface.PDM pdm, int maxPack)
         .ToList();
     Console.WriteLine($"[approve] {candidates.Count} candidate(s) pending approval (maxPack={maxPack})");
 
+    if (candidates.Count < maxPack)
+        maxPack = candidates.Count;
     _ = new Scripts.Approve(sql, pdm, maxPack);
 
     foreach (DB.update_flow candidate in candidates)
