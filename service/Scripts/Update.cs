@@ -177,9 +177,15 @@ public class Update
 
         public void RemoveFileQueue(DB.update_flow up)
         {
-            DB.queue q = new DB.queue();
             this.sql.conn.Delete(up);
-            this.sql.conn.Delete(q);
+
+            var queue = sql.conn.Table<DB.queue>().Where(p => p.code == up.code).ToList();
+            
+            if(queue.Count > 0)
+            {
+                this.sql.conn.Delete(queue[0]);
+
+            }
         }
         public void Begin()
         {
