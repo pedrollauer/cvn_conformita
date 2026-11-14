@@ -172,6 +172,7 @@ static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int
             break;
     }
 
+
     // Excludes paths already handled above via `queue` 
     List<DB.update_flow> pending = sql.conn.Table<DB.update_flow>()
         .Where(d => d.approve != 1)
@@ -182,13 +183,20 @@ static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int
         .ToList();
     Console.WriteLine($"[update] {pending.Count} not-yet-approved file(s) to follow up on (started but not finished, or finished but not yet approved)");
 
+    /*
+    int count = 0;
     foreach (DB.update_flow file in pending)
     {
+        if(count > 5)
+        {
+            break;
+        }
         if (file.checkin == 1)
             continue;
 
         ProcessFile(sw, pdm, sql, file.path);
-    }
+        count++;
+    }*/
 
     Console.WriteLine("[update] done");
 }
