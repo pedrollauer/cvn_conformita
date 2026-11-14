@@ -156,15 +156,20 @@ static void RunUpdate(Interface.SW sw, Interface.PDM pdm, Interface.SQL sql, int
     List<QueueRow> jobs = sql.conn.Query<QueueRow>("SELECT id, code, path FROM queue ORDER BY id ASC LIMIT ?", maxPack);
     Console.WriteLine($"[update] picked up {jobs.Count} job(s) from queue (maxPack={maxPack})");
 
+    int done = 0;
     foreach (QueueRow job in jobs)
     {
         bool ok = ProcessFile(sw, pdm, sql, job.path);
         sql.conn.Execute("DELETE FROM queue WHERE id = ?", job.id);
+        done++;
+        Console.WriteLine("COUNT ---->" + done);
         if (!ok)
         {
             // Re-insert so it gets a fresh id
             sql.conn.Execute("INSERT INTO queue (code, path) VALUES (?, ?)", job.code, job.path);
         }
+        if (done == maxPack)
+            break;
     }
 
     // Excludes paths already handled above via `queue` 

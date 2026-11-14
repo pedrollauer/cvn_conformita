@@ -22,6 +22,9 @@ public class Update
         string SW_VERSION = "2024";
 
         int numberOfChecks = 3; // Keeps track of how many problems to check(fonts, file version...)
+
+        int done = 0;
+
         public Update(SW sw, PDM pdm, SQL sql, string path, bool updateDrawings = false)
         {
             this.sw = sw;
