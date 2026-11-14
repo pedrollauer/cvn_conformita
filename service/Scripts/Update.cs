@@ -351,6 +351,7 @@ public class Update
                                 {
                                     update.checkin = 1;
                                     currentState++;
+                                    sql.conn.Update(update);
                                 }
                                 break;
                             default:
