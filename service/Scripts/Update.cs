@@ -191,6 +191,7 @@ public class Update
         {
             Console.WriteLine("=============== UPDATE ===============");
             // INITIALIZATION
+            sw.swApp.CloseAllDocuments(true);
             string file = Path.GetFileName(path);
             PDMObject obj = new PDMObject(path, pdm);
             obj.getCopy();
