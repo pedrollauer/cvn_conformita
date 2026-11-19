@@ -1089,7 +1089,6 @@ namespace Interface
                 this.model.ForceRebuild3(false);
                 bool result = this.model.Save3((int)swSaveAsOptions_e.swSaveAsOptions_Silent, ref err, ref warn);
                 int missing = this.CheckConformity(path, sql);
-                sw.CloseDoc(this.model.GetTitle());
 
                 if (result && missing == 0)
                     return true;
@@ -1099,6 +1098,11 @@ namespace Interface
             {
                 Console.WriteLine("Erro ao abrir: " + path + " err: " + err);
                 return false;
+            }
+            finally
+            {
+                sw.CloseDoc(this.model.GetTitle());
+
             }
         }
 
