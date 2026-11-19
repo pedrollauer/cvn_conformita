@@ -39,6 +39,9 @@ namespace PdmThumbnailService
                 case 0:
                     RunUpdate(args[1]);
                     break;
+                case 2:
+                    break;
+                    ;
                 default:
                     Console.WriteLine(usageError);
                     break;
