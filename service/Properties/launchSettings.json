@@ -2,7 +2,7 @@
   "profiles": {
     "update": {
       "commandName": "Project",
-      "commandLineArgs": "update 50"
+      "commandLineArgs": "update 69"
     },
     "approve": {
       "commandName": "Project",

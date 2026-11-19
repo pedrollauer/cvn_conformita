@@ -1,11 +1,11 @@
-maxPack = 50
+maxPack = 10
 weekend.startDay = 6
 weekend.startHour = 0
 weekend.endDay = 0
 weekend.endHour = 23
 week.startHour = 19
 week.endHour = 6
-idleServer.activated = false
+idleServer.activated = true
 idleServer.maxPack = 10
 idleServer.intervalMinutes = 60
 maintenance.dbIndex.startHour = 2

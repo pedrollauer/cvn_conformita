@@ -86,14 +86,17 @@ async function run(maxPack = exports.MAX_PACK) {
     if (updateExit !== 0) {
         console.error(`script1: update exited with code ${updateExit}`);
     }
+    /*
     console.log(`script1: starting approve (maxPack=${maxPack})`);
     const approveExit = await runCli("approve", maxPack);
     if (approveExit !== 0) {
         console.error(`script1: approve exited with code ${approveExit}`);
     }
+
     if (updateExit !== 0 || approveExit !== 0) {
         throw new Error(`PdmThumbnailService CLI failed (update=${updateExit}, approve=${approveExit})`);
     }
+    */
     console.log("script1: done");
 }
 if (require.main === module) {

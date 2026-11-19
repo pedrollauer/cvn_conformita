@@ -12,6 +12,7 @@ namespace Interface
         public IEdmVault5 vault;
         private IEdmSearch9 search;
 
+        public int userID = 1727; // TODO FIGURE OUT A WAY TO GET THIS FROM THE PDM ITSELF
         public String userName = "p.lauer";
         public String passWord = "1tYkJ6=_218#Ay";
         public String vaultName = "_CavannaPDM";
@@ -963,6 +964,11 @@ namespace Interface
                     }
                     else
                     {
+                        // If we have the file in chout return true
+                        if (obj.file.LockedByUserID == this.userID)
+                        {
+                            return true;
+                        } else
                         return false;
                     }
                 }

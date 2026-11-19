@@ -99,6 +99,7 @@ export async function run(maxPack: number = MAX_PACK): Promise<void> {
         console.error(`script1: update exited with code ${updateExit}`);
     }
 
+    /*
     console.log(`script1: starting approve (maxPack=${maxPack})`);
     const approveExit = await runCli("approve", maxPack);
     if (approveExit !== 0) {
@@ -108,6 +109,7 @@ export async function run(maxPack: number = MAX_PACK): Promise<void> {
     if (updateExit !== 0 || approveExit !== 0) {
         throw new Error(`PdmThumbnailService CLI failed (update=${updateExit}, approve=${approveExit})`);
     }
+    */
     console.log("script1: done");
 }
 

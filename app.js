@@ -3,8 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// Imported first so nothing logged during the rest of this file's module-load (or anything that
-// runs on require.main like script1.ts, if that's ever imported) is missed by the ring buffer.
 const consoleLog_1 = require("./consoleLog");
 const node_path_1 = __importDefault(require("node:path"));
 const node_fs_1 = __importDefault(require("node:fs"));
@@ -19,22 +17,13 @@ const updateFlow_1 = require("./interface/updateFlow");
 const journey_sql_1 = require("./interface/journey_sql");
 const pdm_sql_1 = require("./interface/pdm_sql");
 const activity_1 = require("./interface/activity");
-// The only script jobScheduler.ts currently has registered (see hourlyScheduler.ts's SCRIPT_ID) -
-// hardcoded here the same way, rather than generalizing a single-script status endpoint.
 const SCRIPT_ID = 1;
 const PORT = process.env.PORT ?? 3000;
 const FRONTEND_DIST = node_path_1.default.join(__dirname, "frontend/dist");
 const app = (0, express_1.default)();
-// /api/parts/dataset ships the whole todo/done table as one JSON response (tens of MB
-// uncompressed) so the frontend can filter it locally instead of re-querying per slider tick -
-// gzip cuts that down a lot since it's mostly small repeated integers. /api/console/stream is
-// excluded - compression buffers output looking for data worth compressing, which defeats an
-// SSE stream that needs each line flushed to the client as soon as it's written.
 app.use((0, compression_1.default)({ filter: (req, res) => req.path !== "/api/console/stream" && compression_1.default.filter(req, res) }));
 app.use(express_1.default.json());
 const api = express_1.default.Router();
-// Triggers a registered script (see jobScheduler.ts) to run in the background.
-// Responds immediately since scripts can take a long time (MAX_PACK files per run).
 api.post("/scheduler/run/:id", (req, res) => {
     const id = Number(req.params.id);
     if ((0, jobScheduler_1.isRunning)(id)) {
@@ -47,9 +36,7 @@ api.post("/scheduler/run/:id", (req, res) => {
     });
     res.status(202).json({ message: `Script ${id} started` });
 });
-// Live "is script1 running, on what file right now, and when's the next run" status for the
-// dashboard - cheap, in-memory/config-file only (see runState.ts, hourlyScheduler.ts), safe to
-// poll often.
+// GETS THE CURRENTLY RUNNING STATUS
 api.get("/scheduler/status", (_req, res) => {
     res.json({ running: (0, jobScheduler_1.isRunning)(SCRIPT_ID), currentFile: (0, runState_1.getCurrentFile)(), nextRun: (0, hourlyScheduler_1.getNextRunEstimate)() });
 });

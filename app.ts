@@ -1,5 +1,3 @@
-// Imported first so nothing logged during the rest of this file's module-load (or anything that
-// runs on require.main like script1.ts, if that's ever imported) is missed by the ring buffer.
 import { getConsoleBacklog, subscribeConsole } from "./consoleLog";
 import path from "node:path";
 import fs from "node:fs";
@@ -15,26 +13,17 @@ import { JourneySql } from "./interface/journey_sql";
 import { PdmSql } from "./interface/pdm_sql";
 import { ActivitySql } from "./interface/activity";
 
-// The only script jobScheduler.ts currently has registered (see hourlyScheduler.ts's SCRIPT_ID) -
-// hardcoded here the same way, rather than generalizing a single-script status endpoint.
 const SCRIPT_ID = 1;
 
 const PORT = process.env.PORT ?? 3000;
 const FRONTEND_DIST = path.join(__dirname, "frontend/dist");
 
 const app = express();
-// /api/parts/dataset ships the whole todo/done table as one JSON response (tens of MB
-// uncompressed) so the frontend can filter it locally instead of re-querying per slider tick -
-// gzip cuts that down a lot since it's mostly small repeated integers. /api/console/stream is
-// excluded - compression buffers output looking for data worth compressing, which defeats an
-// SSE stream that needs each line flushed to the client as soon as it's written.
 app.use(compression({ filter: (req, res) => req.path !== "/api/console/stream" && compression.filter(req, res) }));
 app.use(express.json());
 
 const api = express.Router();
 
-// Triggers a registered script (see jobScheduler.ts) to run in the background.
-// Responds immediately since scripts can take a long time (MAX_PACK files per run).
 api.post("/scheduler/run/:id", (req, res) => {
     const id = Number(req.params.id);
     if (isRunning(id)) {
@@ -50,9 +39,7 @@ api.post("/scheduler/run/:id", (req, res) => {
     res.status(202).json({ message: `Script ${id} started` });
 });
 
-// Live "is script1 running, on what file right now, and when's the next run" status for the
-// dashboard - cheap, in-memory/config-file only (see runState.ts, hourlyScheduler.ts), safe to
-// poll often.
+// GETS THE CURRENTLY RUNNING STATUS
 api.get("/scheduler/status", (_req, res) => {
     res.json({ running: isRunning(SCRIPT_ID), currentFile: getCurrentFile(), nextRun: getNextRunEstimate() });
 });

@@ -87,6 +87,7 @@ public class Update
 
             int step = 0;
             int missing = 0;
+            string code = Path.GetFileName(path);
 
             while (step < 3)
             {
@@ -95,11 +96,18 @@ public class Update
                     case 0:
                         Console.WriteLine(version == 1 ? "VERSION OK" : "WRONG VERSION");
                         missing = version == 1 ? missing : missing + 1;
+                        // error 11 = "outdated files" in the Errors catalog - clear it from todo
+                        // now that this file is confirmed on the current SW version.
+                        if (version == 1)
+                            sql.conn.Execute("DELETE FROM todo WHERE code = ? AND error = 11", code);
                         step++;
                         break;
                     case 1:
                         Console.WriteLine(rollBackBar== 1 ? "ROLL BACK OK" : "WRONG ROLL BACK");
                         missing = rollBackBar == 1 ? missing : missing +1;
+                        // error 5 = "rollback bar" in the Errors catalog.
+                        if (rollBackBar == 1)
+                            sql.conn.Execute("DELETE FROM todo WHERE code = ? AND error = 5", code);
                         step++;
                         break;
                     case 2:
@@ -178,10 +186,14 @@ public class Update
             return 0;
         }
 
-        public void RemoveFileQueue(DB.update_flow up)
+        public void RemoveFileQueue(DB.update_flow? up = null)
         {
-            Console.WriteLine("Deleting update_flow ...");
-            this.sql.conn.Delete(up);
+            if(up != null)
+            {
+                Console.WriteLine("Deleting update_flow ...");
+                this.sql.conn.Delete(up);
+
+            }
 
             var queue = sql.conn.Table<DB.queue>().Where(p => p.code == up.code).ToList();
             Console.WriteLine("Deleting from queue...");
@@ -195,7 +207,156 @@ public class Update
 
             Console.WriteLine("Delete done.");
         }
+
+        //FOR NOW NO SLDDRW, NO OBSOLETE FILES
+        public bool shouldThisFileBeInQueue(PDMObject obj, string path)
+        {
+                if (obj.file.CurrentState.Name == "Obsoleto")
+                {
+
+                    return false;
+                }
+
+                string ext = Path.GetExtension(path).ToUpper();
+
+                if (!ext.Contains(".SLD"))
+                {
+                
+                    return false;
+                }
+
+                if (ext.Contains(".SLDDRW") && !updateDrawings)
+                {
+                    return false;
+                }
+
+            return true;
+
+            
+        }
+
         public void Begin()
+        {
+            string file = Path.GetFileName(path);
+            PDMObject obj = new PDMObject(path, pdm);
+            obj.getCopy();
+
+            int attempt = 0;
+
+            try
+            {
+                Console.WriteLine("=============== UPDATE ===============");
+
+                if (!shouldThisFileBeInQueue(obj, path))
+                    RemoveFileQueue();
+
+                var exists = sql.conn.Table<DB.update_flow>().Where(p => p.code == file && p.path == path).ToList();
+                DB.update_flow update;
+                if (exists.Count == 0)
+                {
+                    update = new DB.update_flow
+                    {
+                        code = file,
+                        path = path,
+                        review = 1,
+                        checkout = 0,
+                        update = 0,
+                        approve = 0,
+                        checkin = 0
+                    };
+
+                    sql.conn.Insert(update);
+                }
+                else
+                {
+                    update = exists[0];
+                    update.path = path;
+                }
+
+                bool chOut = false;
+                bool conform = false;
+                int chIn = -1;
+
+                try
+                {
+                    chOut = pdm.checkoutFile(obj);
+                    if (!chOut)
+                        return;
+                    else
+                        update.checkout = 1;
+                    conform = sw.Conform(path,sql);
+                    if (!conform)
+                        return;
+                    else
+                        update.update = 1;
+
+                    chIn = pdm.checkinFile(obj);
+                    if (chIn != 1)
+                        return;
+                    else
+                    {
+                        update.checkin = 1;
+                        update.approve = 1;
+
+                    }
+
+                }catch(Exception e)
+                {
+                    Console.WriteLine(e.StackTrace);
+                }
+                finally
+                {
+                    if (chIn != 1)
+                    {
+                        pdm.CancelCheckout(obj);
+                    }
+
+                    if(chIn !=1 | !chOut | !conform)
+                    {
+                        //MOVE FROM QUEUE 
+                        string errorDesc = "";
+                        pdm.vault.GetErrorString(chIn,out errorDesc, out _);
+                        sql.conn.Insert(new DB.external_ref
+                        {
+                            code = update.code,
+                            error_code = chIn,
+                            error_desc = errorDesc
+                        });
+                        RemoveFileQueue(update);        
+                    }
+                    else
+                    {
+                        sql.conn.Insert(new DB.done
+                        {
+                            code = update.code,
+                            timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                        });
+                        RemoveFileQueue(update);
+                        List<DB.todo> todos = sql.conn.Table<DB.todo>().Where(p=> p.code == update.code).ToList();
+                        if(todos.Count > 0)
+                        {
+                            foreach(var t in todos)
+                                sql.conn.Delete(t);
+                        }
+                    }
+
+                    sql.conn.Update(update);
+                }
+
+            }catch(Exception e)
+            {
+                Console.WriteLine("ERROR UPDATING");
+                Console.WriteLine(e.StackTrace);
+            }
+            finally
+            {
+                Console.WriteLine("================ DONE  ==============");
+                Console.WriteLine("\n\n");
+
+            }
+
+        }
+        public void Begina()
         {
             Console.WriteLine("=============== UPDATE ===============");
             // INITIALIZATION
@@ -311,7 +472,7 @@ public class Update
                                 break;
                             case 2:
                                 obj.getCopy();
-                                bool result = sw.Conform(update.path);
+                                bool result = sw.Conform(update.path,sql);
                                 int check = checkFile();
 
                                 if (result && check == 0)
