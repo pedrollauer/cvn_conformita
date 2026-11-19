@@ -84,6 +84,7 @@ namespace PdmThumbnailService
             finally
             {
                 sql.conn.Close();
+                sw.swApp.ExitApp();
                 
             }
 

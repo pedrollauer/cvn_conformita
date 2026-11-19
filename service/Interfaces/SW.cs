@@ -1002,8 +1002,8 @@ namespace Interface
 
             // CHECK DRAFTING STANDARD
 
-            SldWorks swApp = new SldWorks();
-            ModelDoc2 swModel = (ModelDoc2)swApp.ActiveDoc;
+            SldWorks swApp = this.swApp;
+            ModelDoc2 swModel = (ModelDoc2)this.model;
 
             string stdName = null;
 
