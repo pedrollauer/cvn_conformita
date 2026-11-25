@@ -71,6 +71,32 @@ export interface RunningTask {
     initiatedBy: string | null;
 }
 
+interface CheckedInFileRow {
+    DocumentID: number;
+    Filename: string;
+    VersionNo: number;
+    CheckedInLocalTime: Date | string;
+    CheckedInUTC: Date | string;
+    Username: string | null;
+    FullName: string | null;
+    Comment: string | null;
+    IsDeleted: 'Yes' | 'No';
+    FolderPath: string | null;
+}
+
+interface CheckedInFile {
+    documentId: number;
+    filename: string;
+    versionNo: number;
+    checkedInLocalTime: Date | string;
+    checkedInUtc: Date | string;
+    username: string | null;
+    fullName: string | null;
+    comment: string | null;
+    isDeleted: boolean;
+    /** Full local vault path, or null if the file isn't linked into a (non-deleted) folder. */
+    path: string | null;
+}
 interface RunningTaskRow {
     TaskInstanceID: number;
     TaskID: number;
@@ -163,6 +189,82 @@ export class PdmSql {
         const result = await request.query<T>(queryText);
         return result.recordset;
     }
+
+    /**
+     * Checked-in .SLDASM files under \CAD\, from `since` (inclusive) up to `until` (exclusive,
+     * defaults to now) - local vault time, same as the old hardcoded "today" window this replaces.
+     * Also resolves each file's full local path via the same DocumentsInProjects/Projects join
+     * findFileByCode uses, restricted to its \CAD\ project link (there can be only one, since the
+     * EXISTS filter below already requires it) - null if that link has since gone away.
+     */
+    async getCheckins(since: Date, until: Date = new Date()): Promise<CheckedInFile[]> {
+        const query = `SELECT
+        D.DocumentID,
+        D.Filename,
+        R.RevNr AS VersionNo,
+        DATEADD(minute, DATEDIFF(minute, GETUTCDATE(), GETDATE()), R.Date) AS CheckedInLocalTime,
+        R.Date AS CheckedInUTC,
+        U.Username,
+        U.FullName,
+        R.Comment,
+        CASE WHEN D.Deleted = 1 THEN 'Yes' ELSE 'No' END AS IsDeleted,
+        Folder.FolderPath
+    FROM Revisions R
+    INNER JOIN Documents D
+        ON R.DocumentID = D.DocumentID
+    LEFT JOIN Users U
+        ON R.UserID = U.UserID
+    OUTER APPLY (
+        SELECT TOP 1 P.Path AS FolderPath
+        FROM DocumentsInProjects DIP
+        INNER JOIN Projects P
+            ON DIP.ProjectID = P.ProjectID
+        WHERE DIP.DocumentID = D.DocumentID
+          AND DIP.Deleted = 0
+          AND (
+              P.Path = '.\CAD'
+              OR P.Path LIKE '.\CAD\%'
+              OR P.Path LIKE '%\CAD'
+              OR P.Path LIKE '%\CAD\%'
+          )
+        ORDER BY DIP.ProjectID
+    ) AS Folder
+    WHERE DATEADD(minute, DATEDIFF(minute, GETUTCDATE(), GETDATE()), R.Date) >= @since
+      AND DATEADD(minute, DATEDIFF(minute, GETUTCDATE(), GETDATE()), R.Date) < @until
+      AND D.Filename LIKE '%.SLDASM'
+      AND EXISTS (
+          SELECT 1
+          FROM DocumentsInProjects DIP
+          INNER JOIN Projects P
+              ON DIP.ProjectID = P.ProjectID
+          WHERE DIP.DocumentID = D.DocumentID
+            AND DIP.Deleted = 0
+            AND (
+                P.Path = '.\CAD'
+                OR P.Path LIKE '.\CAD\%'
+                OR P.Path LIKE '%\CAD'
+                OR P.Path LIKE '%\CAD\%'
+            )
+      )
+    ORDER BY CheckedInLocalTime DESC;`;
+
+        const rows = await this.query<CheckedInFileRow>(query, { since, until });
+        const vaultRoot = `C:\\${VAULT_DATABASES[this.config.vault]}`;
+
+        return rows.map((row) => ({
+            documentId: row.DocumentID,
+            filename: row.Filename,
+            versionNo: row.VersionNo,
+            checkedInLocalTime: row.CheckedInLocalTime,
+            checkedInUtc: row.CheckedInUTC,
+            username: row.Username,
+            fullName: row.FullName,
+            comment: row.Comment,
+            isDeleted: row.IsDeleted === 'Yes',
+            path: row.FolderPath ? `${vaultRoot}${row.FolderPath}${row.Filename}` : null,
+        }));
+    }
+
 
     /**
      * Tasks from the Operations tab queue that haven't finished yet (queued or actively running).

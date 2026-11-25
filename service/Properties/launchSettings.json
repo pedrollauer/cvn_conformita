@@ -10,7 +10,11 @@
     },
     "freezebar": {
       "commandName": "Project",
-      "commandLineArgs": "freezebar C:\\PATH\\TO\\TEST\\FILE.SLDPRT"
+      "commandLineArgs": "distinta 290094213458"
+    },
+    "Perfil 1": {
+      "commandName": "Project",
+      "commandLineArgs": "bom 290094213458"
     }
   },
   "$schema": "https://json.schemastore.org/launchsettings.json"

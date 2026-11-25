@@ -1,0 +1,4 @@
+O que fazer com arquivos que não têm o update_flow completo?
+Simplificar o código de qualidade de imagem.
+Interromper ligação de peças com referência externa.
+A tabela todo tem um valor por código

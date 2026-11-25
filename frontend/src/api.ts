@@ -9,6 +9,8 @@ import type {
     DailyCount,
     SchedulerStatus,
     RunningTask,
+    DistintaQueueItem,
+    BomCompareRow,
 } from "./types";
 
 const API_BASE = "/api";
@@ -109,6 +111,18 @@ export function getSchedulerStatus(): Promise<SchedulerStatus> {
 /** Snapshot of the PDM Operations tab queue (tasks queued or actively running). */
 export function getRunningPdmTasks(): Promise<RunningTask[]> {
     return request<RunningTask[]>("/pdm/running-tasks");
+}
+
+/** Triggers a sync of newly checked-in PDM files into C:\db\distinta.db, then returns that DB's
+ * full queue (the Distinta page's data source - an ever-growing local log, not just today's). */
+export function getDistinta(): Promise<DistintaQueueItem[]> {
+    return request<DistintaQueueItem[]>("/distinta", { method: "POST" });
+}
+
+/** Compares `code`'s PDM (SOLIDWORKS as-built) BOM against its LN/Infor (ERP) BOM, one row per
+ * component found on either side. Can take a while - it shells out to PdmThumbnailService.exe. */
+export function compareBom(code: string): Promise<BomCompareRow[]> {
+    return request<BomCompareRow[]>(`/distinta/compare?code=${encodeURIComponent(code)}`);
 }
 
 /** Full backlog (up to the last 1000 lines) of everything logged via console.log/console.error

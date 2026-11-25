@@ -41,6 +41,10 @@ export function ThemeToggle() {
 
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
+        // AG Grid's Theming API (themeQuartz's colorSchemeVariable part) keys its own dark-mode
+        // CSS off this separate attribute, not off `data-theme` above - without it every grid
+        // renders its default light colors regardless of the app's own theme.
+        document.documentElement.setAttribute("data-ag-theme-mode", theme);
         try {
             localStorage.setItem(STORAGE_KEY, theme);
         } catch {

@@ -1,7 +1,7 @@
 import { getConsoleBacklog, subscribeConsole } from "./consoleLog";
 import path from "node:path";
 import fs from "node:fs";
-import express from "express";
+import express, { json } from "express";
 import compression from "compression";
 import { isRunning, runScript } from "./jobScheduler";
 import { getSchedulerConfig, updateSchedulerConfig } from "./schedulerConfig";
@@ -12,6 +12,10 @@ import { UpdateFlowSql } from "./interface/updateFlow";
 import { JourneySql } from "./interface/journey_sql";
 import { PdmSql } from "./interface/pdm_sql";
 import { ActivitySql } from "./interface/activity";
+import { DistintaSql } from "./interface/distinta_sql";
+import { ErpSql } from "./interface/erp_sql";
+import { getLnBom } from "./interface/erp_bom";
+import { getPdmBom } from "./interface/pdmBomCli";
 
 const SCRIPT_ID = 1;
 
@@ -223,6 +227,121 @@ api.post("/queue/by-pattern", async (req, res) => {
     }
 });
 
+// Start of `d`'s local calendar day - the sync's fallback window when C:\db\distinta.db has no
+// last_run yet, matching the "today" window the old implementation always used.
+function startOfLocalDay(d: Date): Date {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+}
+
+// Pulls newly checked-in files since the last sync from PDM into C:\db\distinta.db's `queue`
+// table, then responds with that table's full contents - the Distinta page reads this local,
+// ever-growing cache instead of re-querying PDM (and re-showing the same rows) on every load.
+// Was a GET that just forwarded PdmSql.getCheckins() straight to the response; moved to POST
+// since this now does real work (a sync + a write) each time it's called.
+api.post("/distinta", async (_req, res) => {
+    const distinta = new DistintaSql();
+    const pdm = new PdmSql();
+    try {
+        const since = distinta.getLastRun() ?? startOfLocalDay(new Date());
+        const until = new Date();
+        const checkins = await pdm.getCheckins(since, until);
+        distinta.enqueue(
+            checkins.map((c) => ({
+                file: c.filename,
+                path: c.path,
+                checkedInAt: new Date(c.checkedInLocalTime).toISOString(),
+            })),
+        );
+        distinta.setLastRun(until);
+        res.json(distinta.all());
+    } catch (err) {
+        res.status(502).json({ error: `Distinta sync failed: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+        await pdm.close();
+        distinta.close();
+    }
+});
+
+export interface BomCompareRow {
+    code: string;
+    pdmQuantity: number | null;
+    lnQuantity: number | null;
+    mismatch: boolean;
+}
+
+// ERP (LN) cleans a leading '0' off its own item codes (see erp_bom.ts's sitm_clean CASE) but
+// PDM's BOM codes keep it - same leading-zero fallback scripts/syncProjects.ts's lookupProjects
+// already relies on to match the two sides' codes.
+function stripLeadingZero(code: string): string {
+    return code.length > 1 && code.startsWith("0") ? code.slice(1) : code;
+}
+
+// Joins the PDM and LN BOM lines for one part by code (falling back to the leading-zero-stripped
+// form when a direct match misses), and flags a row red-worthy ("mismatch") whenever a code is
+// missing on either side or the quantities don't agree.
+function compareBoms(
+    pdmLines: Array<{ code: string; quantity: number }>,
+    lnLines: Array<{ code: string; quantity: number }>,
+): BomCompareRow[] {
+    const lnByCode = new Map(lnLines.map((line) => [line.code, line.quantity]));
+    const consumedLnCodes = new Set<string>();
+    const rows: BomCompareRow[] = [];
+
+    for (const pdmLine of pdmLines) {
+        let lnCode = pdmLine.code;
+        let lnQuantity = lnByCode.get(lnCode);
+        if (lnQuantity === undefined) {
+            const stripped = stripLeadingZero(pdmLine.code);
+            if (stripped !== pdmLine.code && lnByCode.has(stripped)) {
+                lnCode = stripped;
+                lnQuantity = lnByCode.get(stripped);
+            }
+        }
+        if (lnQuantity !== undefined) {
+            consumedLnCodes.add(lnCode);
+        }
+        rows.push({
+            code: pdmLine.code,
+            pdmQuantity: pdmLine.quantity,
+            lnQuantity: lnQuantity ?? null,
+            mismatch: lnQuantity === undefined || lnQuantity !== pdmLine.quantity,
+        });
+    }
+
+    for (const lnLine of lnLines) {
+        if (consumedLnCodes.has(lnLine.code)) {
+            continue;
+        }
+        rows.push({ code: lnLine.code, pdmQuantity: null, lnQuantity: lnLine.quantity, mismatch: true });
+    }
+
+    rows.sort((a, b) => a.code.localeCompare(b.code));
+    return rows;
+}
+
+// Compares a part's PDM (SOLIDWORKS, as-built) BOM against its LN/Infor (ERP) BOM, one row per
+// component code found on either side - see service/Program.cs's RunDistinta (PDM) and
+// distinta.sql (LN, now parameterized in erp_bom.ts) for where each side's data comes from.
+api.get("/distinta/compare", async (req, res) => {
+    const code = typeof req.query.code === "string" ? req.query.code.trim() : "";
+    if (!code) {
+        res.status(400).json({ error: "code is required" });
+        return;
+    }
+
+    const erp = new ErpSql();
+    try {
+        const [lnLines, pdmLines] = await Promise.all([getLnBom(erp, code), getPdmBom(code)]);
+        res.json(compareBoms(pdmLines, lnLines));
+    } catch (err) {
+        res.status(502).json({ error: `BOM comparison failed: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+        await erp.close();
+    }
+});
+
 // Snapshot of the PDM Operations tab queue - tasks that are queued or actively running (EndTime
 // IS NULL). Hits the PDM SQL server directly, so it's a real-time read, not cached.
 api.get("/pdm/running-tasks", async (_req, res) => {
@@ -340,6 +459,8 @@ if (fs.existsSync(FRONTEND_DIST)) {
         res.send("conformita backend running (frontend not built — run `npm run build` in frontend/)");
     });
 }
+
+
 
 // Logs any route exception (captured by consoleLog.ts too, so it shows up in /console) instead
 // of letting it disappear into Express's default handler - that's what made the /console

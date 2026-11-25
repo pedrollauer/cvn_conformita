@@ -17,6 +17,19 @@ export interface RunningTask {
     host: string | null;
     initiatedBy: string | null;
 }
+interface CheckedInFile {
+    documentId: number;
+    filename: string;
+    versionNo: number;
+    checkedInLocalTime: Date | string;
+    checkedInUtc: Date | string;
+    username: string | null;
+    fullName: string | null;
+    comment: string | null;
+    isDeleted: boolean;
+    /** Full local vault path, or null if the file isn't linked into a (non-deleted) folder. */
+    path: string | null;
+}
 export interface VaultFile {
     documentId: number;
     filename: string;
@@ -38,6 +51,14 @@ export declare class PdmSql {
     close(): Promise<void>;
     /** Runs a read-only (SELECT/WITH) parameterized query and returns the recordset. */
     query<T>(queryText: string, params?: Record<string, unknown>): Promise<T[]>;
+    /**
+     * Checked-in .SLDASM files under \CAD\, from `since` (inclusive) up to `until` (exclusive,
+     * defaults to now) - local vault time, same as the old hardcoded "today" window this replaces.
+     * Also resolves each file's full local path via the same DocumentsInProjects/Projects join
+     * findFileByCode uses, restricted to its \CAD\ project link (there can be only one, since the
+     * EXISTS filter below already requires it) - null if that link has since gone away.
+     */
+    getCheckins(since: Date, until?: Date): Promise<CheckedInFile[]>;
     /**
      * Tasks from the Operations tab queue that haven't finished yet (queued or actively running).
      * A TaskInstances row with EndTime IS NULL means the task hasn't completed, regardless of
@@ -71,4 +92,5 @@ export declare class PdmSql {
      */
     findApprovedCadFiles(pattern: string): Promise<VaultFile[]>;
 }
+export {};
 //# sourceMappingURL=pdm_sql.d.ts.map

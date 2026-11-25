@@ -162,6 +162,26 @@ export interface SchedulerStatus {
     nextRun: NextRunEstimate;
 }
 
+// Mirrors backend/interface/distinta_sql.ts's DistintaQueueItem - one row per PDM file the
+// backend's distinta sync has ever seen checked in. POST /api/distinta's response shape (the
+// full contents of C:\db\distinta.db's `queue` table after that call's sync).
+export interface DistintaQueueItem {
+    id: number;
+    file: string;
+    path: string | null;
+    checkedInAt: string | null; // ISO timestamp, local vault time - null for rows queued before this field existed
+}
+
+// Mirrors backend/app.ts's BomCompareRow - one row per component code found on either side of
+// GET /api/distinta/compare?code=..., comparing a part's PDM (SOLIDWORKS as-built) BOM against
+// its LN/Infor (ERP) BOM.
+export interface BomCompareRow {
+    code: string;
+    pdmQuantity: number | null;
+    lnQuantity: number | null;
+    mismatch: boolean;
+}
+
 // Mirrors backend/interface/pdm_sql.ts's RunningTask - a PDM Operations tab task that's queued
 // or actively running (EndTime IS NULL).
 export interface RunningTask {

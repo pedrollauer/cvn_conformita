@@ -6,6 +6,8 @@ import "./PageHeader.css";
 const NAV_LINKS = [
     { to: "/parts-view", label: "Parts view" },
     { to: "/console", label: "Console" },
+    { to: "/distinta", label: "Checkin" },
+    { to: "/distinta-bom", label: "Distinta" },
 ];
 
 interface PageHeaderProps {

@@ -17,6 +17,10 @@ const updateFlow_1 = require("./interface/updateFlow");
 const journey_sql_1 = require("./interface/journey_sql");
 const pdm_sql_1 = require("./interface/pdm_sql");
 const activity_1 = require("./interface/activity");
+const distinta_sql_1 = require("./interface/distinta_sql");
+const erp_sql_1 = require("./interface/erp_sql");
+const erp_bom_1 = require("./interface/erp_bom");
+const pdmBomCli_1 = require("./interface/pdmBomCli");
 const SCRIPT_ID = 1;
 const PORT = process.env.PORT ?? 3000;
 const FRONTEND_DIST = node_path_1.default.join(__dirname, "frontend/dist");
@@ -207,6 +211,104 @@ api.post("/queue/by-pattern", async (req, res) => {
     finally {
         queue.close();
         updateFlow.close();
+    }
+});
+// Start of `d`'s local calendar day - the sync's fallback window when C:\db\distinta.db has no
+// last_run yet, matching the "today" window the old implementation always used.
+function startOfLocalDay(d) {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+}
+// Pulls newly checked-in files since the last sync from PDM into C:\db\distinta.db's `queue`
+// table, then responds with that table's full contents - the Distinta page reads this local,
+// ever-growing cache instead of re-querying PDM (and re-showing the same rows) on every load.
+// Was a GET that just forwarded PdmSql.getCheckins() straight to the response; moved to POST
+// since this now does real work (a sync + a write) each time it's called.
+api.post("/distinta", async (_req, res) => {
+    const distinta = new distinta_sql_1.DistintaSql();
+    const pdm = new pdm_sql_1.PdmSql();
+    try {
+        const since = distinta.getLastRun() ?? startOfLocalDay(new Date());
+        const until = new Date();
+        const checkins = await pdm.getCheckins(since, until);
+        distinta.enqueue(checkins.map((c) => ({
+            file: c.filename,
+            path: c.path,
+            checkedInAt: new Date(c.checkedInLocalTime).toISOString(),
+        })));
+        distinta.setLastRun(until);
+        res.json(distinta.all());
+    }
+    catch (err) {
+        res.status(502).json({ error: `Distinta sync failed: ${err instanceof Error ? err.message : String(err)}` });
+    }
+    finally {
+        await pdm.close();
+        distinta.close();
+    }
+});
+// ERP (LN) cleans a leading '0' off its own item codes (see erp_bom.ts's sitm_clean CASE) but
+// PDM's BOM codes keep it - same leading-zero fallback scripts/syncProjects.ts's lookupProjects
+// already relies on to match the two sides' codes.
+function stripLeadingZero(code) {
+    return code.length > 1 && code.startsWith("0") ? code.slice(1) : code;
+}
+// Joins the PDM and LN BOM lines for one part by code (falling back to the leading-zero-stripped
+// form when a direct match misses), and flags a row red-worthy ("mismatch") whenever a code is
+// missing on either side or the quantities don't agree.
+function compareBoms(pdmLines, lnLines) {
+    const lnByCode = new Map(lnLines.map((line) => [line.code, line.quantity]));
+    const consumedLnCodes = new Set();
+    const rows = [];
+    for (const pdmLine of pdmLines) {
+        let lnCode = pdmLine.code;
+        let lnQuantity = lnByCode.get(lnCode);
+        if (lnQuantity === undefined) {
+            const stripped = stripLeadingZero(pdmLine.code);
+            if (stripped !== pdmLine.code && lnByCode.has(stripped)) {
+                lnCode = stripped;
+                lnQuantity = lnByCode.get(stripped);
+            }
+        }
+        if (lnQuantity !== undefined) {
+            consumedLnCodes.add(lnCode);
+        }
+        rows.push({
+            code: pdmLine.code,
+            pdmQuantity: pdmLine.quantity,
+            lnQuantity: lnQuantity ?? null,
+            mismatch: lnQuantity === undefined || lnQuantity !== pdmLine.quantity,
+        });
+    }
+    for (const lnLine of lnLines) {
+        if (consumedLnCodes.has(lnLine.code)) {
+            continue;
+        }
+        rows.push({ code: lnLine.code, pdmQuantity: null, lnQuantity: lnLine.quantity, mismatch: true });
+    }
+    rows.sort((a, b) => a.code.localeCompare(b.code));
+    return rows;
+}
+// Compares a part's PDM (SOLIDWORKS, as-built) BOM against its LN/Infor (ERP) BOM, one row per
+// component code found on either side - see service/Program.cs's RunDistinta (PDM) and
+// distinta.sql (LN, now parameterized in erp_bom.ts) for where each side's data comes from.
+api.get("/distinta/compare", async (req, res) => {
+    const code = typeof req.query.code === "string" ? req.query.code.trim() : "";
+    if (!code) {
+        res.status(400).json({ error: "code is required" });
+        return;
+    }
+    const erp = new erp_sql_1.ErpSql();
+    try {
+        const [lnLines, pdmLines] = await Promise.all([(0, erp_bom_1.getLnBom)(erp, code), (0, pdmBomCli_1.getPdmBom)(code)]);
+        res.json(compareBoms(pdmLines, lnLines));
+    }
+    catch (err) {
+        res.status(502).json({ error: `BOM comparison failed: ${err instanceof Error ? err.message : String(err)}` });
+    }
+    finally {
+        await erp.close();
     }
 });
 // Snapshot of the PDM Operations tab queue - tasks that are queued or actively running (EndTime
